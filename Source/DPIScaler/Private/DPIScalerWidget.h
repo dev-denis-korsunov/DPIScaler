@@ -26,12 +26,12 @@ struct DPISCALER_API FDPIMediaQuery
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (EditCondition = "bOverrideScreenMaxHeight")) int32 ScreenMaxHeight;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (EditCondition = "bOverrideScreenMinAspectRatio", ClampMin = "0.000001")) float ScreenMinAspectRatio;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (EditCondition = "bOverrideScreenMaxAspectRatio")) float ScreenMaxAspectRatio;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "DPI Scale Override", meta = (EditCondition = "bOverrideDPIScaleOverride")) float DPIScaleOverride;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Min DPI Scale", meta = (EditCondition = "bOverrideMinDPIScale")) float MinDPIScale;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Max DPI Scale", meta = (EditCondition = "bOverrideMaxDPIScale")) float MaxDPIScale;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "DPI Scale Override", meta = (EditCondition = "bOverrideDPIScaleOverride", ClampMin = "0.0001")) float DPIScaleOverride;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Min DPI Scale", meta = (EditCondition = "bOverrideMinDPIScale", ClampMin = "0.0001")) float MinDPIScale;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Max DPI Scale", meta = (EditCondition = "bOverrideMaxDPIScale", ClampMin = "0.0001")) float MaxDPIScale;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (EditCondition = "bOverrideCurve")) EDPICurveRuleType CurveRule;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "DPI Curve", meta = (EditCondition = "bOverrideCurve", EditConditionHides)) FRuntimeFloatCurve DPICurve;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Snap DPI Scale Grid", meta = (EditCondition = "bSnapDPIToGrid")) float SnapDPIScaleGrid;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "Snap DPI Scale Grid", meta = (EditCondition = "bSnapDPIToGrid", ClampMin = "0.0001")) float SnapDPIScaleGrid;
 	UPROPERTY(EditAnywhere, meta = (InlineEditConditionToggle)) uint8 bOverrideScreenMinWidth : 1;
 	UPROPERTY(EditAnywhere, meta = (InlineEditConditionToggle)) uint8 bOverrideScreenMaxWidth : 1;
 	UPROPERTY(EditAnywhere, meta = (InlineEditConditionToggle)) uint8 bOverrideScreenMinHeight : 1;
