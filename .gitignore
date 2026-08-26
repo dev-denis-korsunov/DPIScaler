@@ -1,0 +1,14 @@
+# Unreal Engine build products
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# IDE and OS metadata
+.vs/
+.idea/
+.vscode/
+*.sln
+*.xcodeproj
+*.xcworkspace
+.DS_Store
