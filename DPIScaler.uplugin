@@ -1,0 +1,12 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "DPI Scaler",
+	"Description": "Blueprint UMG widget for DPI scaling with media-query rules.",
+	"Category": "UI",
+	"CreatedBy": "Denis Korsunov",
+	"CanContainContent": false,
+	"EnabledByDefault": true,
+	"Modules": [{ "Name": "DPIScaler", "Type": "Runtime", "LoadingPhase": "Default" }]
+}
