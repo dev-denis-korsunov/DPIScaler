@@ -57,18 +57,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bDesignerMute = false;
 #endif
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FDPIMediaQuery> MediaQueries;
+	UFUNCTION(BlueprintCallable, Category = "DPI Scaler")
+	void SetMediaQueries(const TArray<FDPIMediaQuery>& InMediaQueries);
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual void SynchronizeProperties() override;
 protected:
 	float GetDPIScale() const;
+	float GetAbsoluteDesiredDPIScale(float ApplicationScale, const FIntPoint& ViewportSize) const;
+	float GetDesiredDPIScale(float SourceScale, const FIntPoint& ViewportSize) const;
+	const UDPIScalerWidget* FindParentDPIScaler() const;
 	virtual void OnSlotAdded(UPanelSlot* InSlot) override;
 	virtual void OnSlotRemoved(UPanelSlot* InSlot) override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	TSharedPtr<class SDPIScaler> DPIScaler;
-	struct FMediaQueryCache { FIntPoint ViewportSize = FIntPoint::ZeroValue; float DPIScale = 0.0f; float SourceScale = 0.0f; float DesiredScale = 0.0f; };
-	mutable FMediaQueryCache Cache;
 #if WITH_EDITOR
 public:
 	virtual void OnDesignerChanged(const FDesignerChangedEventArgs& EventArgs) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	TOptional<FVector2D> DesignerSize;
 	TOptional<float> DesignerDpi;
 	bool bScreenPreview = false;

@@ -2,6 +2,7 @@
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
+#include "UObject/UnrealType.h"
 #include "Widgets/Layout/SDPIScaler.h"
 
 FDPIMediaQuery::FDPIMediaQuery()
@@ -19,7 +20,7 @@ FDPIMediaQuery::FDPIMediaQuery()
 UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	bIsVariable = false;
-	Visibility = ESlateVisibility::SelfHitTestInvisible;
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 }
 
 float UDPIScalerWidget::GetDPIScale() const
@@ -36,12 +37,16 @@ float UDPIScalerWidget::GetDPIScale() const
 	{
 		ApplicationScale = UWidgetLayoutLibrary::GetViewportScale(GetWorld());
 		ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld()).IntPoint();
-		if (Cache.ViewportSize == ViewportSize) return Cache.DPIScale;
 	}
 	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return 1.0f;
 
-	float ParentDesiredScale = 1.0f;
-	bool bUseParentScale = false;
+	const UDPIScalerWidget* ParentScaler = FindParentDPIScaler();
+	const float SourceScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
+	return GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) / FMath::Max(SourceScale, KINDA_SMALL_NUMBER);
+}
+
+const UDPIScalerWidget* UDPIScalerWidget::FindParentDPIScaler() const
+{
 	const UDPIScalerWidget* ParentScaler = nullptr;
 	const UPanelWidget* ParentWidget = GetParent();
 	const UWidgetTree* OuterWidgetTree = Cast<UWidgetTree>(GetOuter());
@@ -60,14 +65,19 @@ float UDPIScalerWidget::GetDPIScale() const
 		if (!IsValid(ParentWidget)) break;
 		OuterWidgetTree = Cast<UWidgetTree>(ParentWidget->GetOuter());
 	}
-	if (IsValid(ParentScaler))
-	{
-		if (ParentScaler->Cache.ViewportSize != ViewportSize) return 1.0f;
-		ParentDesiredScale = ParentScaler->Cache.DesiredScale;
-		bUseParentScale = true;
-	}
+	return ParentScaler;
+}
 
-	float DesiredScale = bUseParentScale ? ParentDesiredScale : ApplicationScale;
+float UDPIScalerWidget::GetAbsoluteDesiredDPIScale(float ApplicationScale, const FIntPoint& ViewportSize) const
+{
+	const UDPIScalerWidget* ParentScaler = FindParentDPIScaler();
+	const float SourceScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
+	return GetDesiredDPIScale(SourceScale, ViewportSize);
+}
+
+float UDPIScalerWidget::GetDesiredDPIScale(float SourceScale, const FIntPoint& ViewportSize) const
+{
+	float DesiredScale = SourceScale;
 	for (const FDPIMediaQuery& Query : MediaQueries)
 	{
 		if (!(Query.bOverrideDPIScaleOverride || Query.bOverrideMinDPIScale || Query.bOverrideMaxDPIScale || Query.bOverrideCurve || Query.bSnapDPIToGrid)) continue;
@@ -88,11 +98,19 @@ float UDPIScalerWidget::GetDPIScale() const
 		if (Query.bSnapDPIToGrid && !FMath::IsNearlyZero(Query.SnapDPIScaleGrid)) QueryScale = FMath::GridSnap(QueryScale, Query.SnapDPIScaleGrid);
 		switch (Query.BlendType) { case EDPIMediaQueryBlendType::Override: DesiredScale = QueryScale; break; case EDPIMediaQueryBlendType::Min: DesiredScale = FMath::Min(DesiredScale, QueryScale); break; case EDPIMediaQueryBlendType::Max: DesiredScale = FMath::Max(DesiredScale, QueryScale); break; }
 	}
-	Cache.ViewportSize = ViewportSize;
-	Cache.DesiredScale = DesiredScale;
-	Cache.SourceScale = bUseParentScale ? ParentDesiredScale : ApplicationScale;
-	Cache.DPIScale = DesiredScale / FMath::Max(Cache.SourceScale, KINDA_SMALL_NUMBER);
-	return Cache.DPIScale;
+	return DesiredScale;
+}
+
+void UDPIScalerWidget::SetMediaQueries(const TArray<FDPIMediaQuery>& InMediaQueries)
+{
+	MediaQueries = InMediaQueries;
+	InvalidateLayoutAndVolatility();
+}
+
+void UDPIScalerWidget::SynchronizeProperties()
+{
+	Super::SynchronizeProperties();
+	InvalidateLayoutAndVolatility();
 }
 
 TSharedRef<SWidget> UDPIScalerWidget::RebuildWidget()
@@ -111,5 +129,12 @@ void UDPIScalerWidget::OnDesignerChanged(const FDesignerChangedEventArgs& EventA
 	bScreenPreview = EventArgs.bScreenPreview;
 	DesignerSize = EventArgs.bScreenPreview ? EventArgs.Size : FVector2D::ZeroVector;
 	DesignerDpi = EventArgs.DpiScale;
+	InvalidateLayoutAndVolatility();
+}
+
+void UDPIScalerWidget::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	InvalidateLayoutAndVolatility();
 }
 #endif
