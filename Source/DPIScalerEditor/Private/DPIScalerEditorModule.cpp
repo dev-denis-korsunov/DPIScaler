@@ -38,22 +38,22 @@ namespace UE::DPIScalerEditor::Private
 			if (bHasMin) Maximum = FMath::Max(Maximum, bWidth ? Query.ScreenMinWidth : Query.ScreenMinHeight);
 			if (bHasMax) Maximum = FMath::Max(Maximum, bWidth ? Query.ScreenMaxWidth : Query.ScreenMaxHeight);
 		}
-		return FMath::DivideAndRoundUp(Maximum, 100) * 100;
+		return Maximum;
 	}
 
-	static void DrawRuler(const UDPIScalerWidget& Scaler, const FVector2D& Origin, const FVector2D& Size, float CurrentViewportSize, bool bWidth, FSlateWindowElementList& DrawElements, int32 LayerId)
+	static void DrawRuler(const UDPIScalerWidget& Scaler, const FVector2D& Origin, float UnitsToSlate, float CurrentViewportSize, bool bWidth, FSlateWindowElementList& DrawElements, int32 LayerId)
 	{
 		const int32 Maximum = GetRulerMaximum(CurrentViewportSize, Scaler.MediaQueries, bWidth);
+		const float RulerLength = Maximum * UnitsToSlate;
 		const FVector2D RulerPosition = bWidth ? FVector2D(Origin.X, Origin.Y - RulerThickness - RulerGap) : FVector2D(Origin.X - RulerThickness - RulerGap, Origin.Y);
-		const FVector2D RulerSize = bWidth ? FVector2D(Size.X, RulerThickness) : FVector2D(RulerThickness, Size.Y);
+		const FVector2D RulerSize = bWidth ? FVector2D(RulerLength, RulerThickness) : FVector2D(RulerThickness, RulerLength);
 		const FSlateBrush* WhiteBrush = FCoreStyle::Get().GetBrush("WhiteBrush");
 		FSlateDrawElement::MakeBox(DrawElements, LayerId, FPaintGeometry(RulerPosition, RulerSize, 1.0f), WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.045f, 0.055f, 0.075f, 0.94f));
 
 		const int32 TickStep = Maximum <= 800 ? 100 : Maximum <= 2000 ? 250 : 500;
 		for (int32 Value = 0; Value <= Maximum; Value += TickStep)
 		{
-			const float Ratio = static_cast<float>(Value) / Maximum;
-			const float Position = Ratio * (bWidth ? Size.X : Size.Y);
+			const float Position = Value * UnitsToSlate;
 			const FVector2D LineStart = bWidth ? RulerPosition + FVector2D(Position, RulerThickness - 7.0f) : RulerPosition + FVector2D(RulerThickness - 7.0f, Position);
 			const FVector2D LineEnd = bWidth ? RulerPosition + FVector2D(Position, RulerThickness) : RulerPosition + FVector2D(RulerThickness, Position);
 			const TArray<FVector2D> Points = { LineStart, LineEnd };
@@ -74,7 +74,7 @@ namespace UE::DPIScalerEditor::Private
 			const int32 MaxValue = bWidth ? Query.ScreenMaxWidth : Query.ScreenMaxHeight;
 			auto DrawMarker = [&](int32 Value, bool bMinimum)
 			{
-				const float Position = FMath::Clamp(static_cast<float>(Value) / Maximum, 0.0f, 1.0f) * (bWidth ? Size.X : Size.Y);
+				const float Position = FMath::Clamp(Value * UnitsToSlate, 0.0f, RulerLength);
 				const FVector2D Start = bWidth ? RulerPosition + FVector2D(Position, 0.0f) : RulerPosition + FVector2D(0.0f, Position);
 				const FVector2D End = bWidth ? RulerPosition + FVector2D(Position, RulerThickness) : RulerPosition + FVector2D(RulerThickness, Position);
 				const TArray<FVector2D> Points = { Start, End };
@@ -102,7 +102,7 @@ namespace UE::DPIScalerEditor::Private
 			return Selection.Num() == 1 && Cast<UDPIScalerWidget>(Selection[0].GetTemplate()) != nullptr;
 		}
 
-		virtual void Paint(const TSet<FWidgetReference>& Selection, const FGeometry& AllottedGeometry, const FSlateRect&, FSlateWindowElementList& DrawElements, int32 LayerId) const override
+		virtual void Paint(const TSet<FWidgetReference>& Selection, const FGeometry&, const FSlateRect&, FSlateWindowElementList& DrawElements, int32 LayerId) const override
 		{
 			if (Selection.Num() != 1 || Designer == nullptr) return;
 			const FWidgetReference& Selected = *Selection.CreateConstIterator();
@@ -110,16 +110,21 @@ namespace UE::DPIScalerEditor::Private
 			const UDPIScalerWidget* PreviewScaler = Cast<UDPIScalerWidget>(Selected.GetPreview());
 			FGeometry WidgetGeometry;
 			if (Scaler == nullptr || !Designer->GetWidgetGeometry(Selected, WidgetGeometry)) return;
-			const FVector2D Origin = AllottedGeometry.AbsoluteToLocal(WidgetGeometry.GetAbsolutePosition());
-			const FVector2D End = AllottedGeometry.AbsoluteToLocal(WidgetGeometry.LocalToAbsolute(WidgetGeometry.GetLocalSize()));
+			WidgetGeometry = Designer->MakeGeometryWindowLocal(WidgetGeometry);
+			const FVector2D Origin = WidgetGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+			const FVector2D End = WidgetGeometry.LocalToAbsolute(WidgetGeometry.GetLocalSize());
 			const FVector2D Size = End - Origin;
 			FVector2D ViewportSize = WidgetGeometry.GetLocalSize();
 			if (PreviewScaler != nullptr && PreviewScaler->DesignerSize.IsSet() && PreviewScaler->DesignerSize.GetValue().GetMin() > 0.0f)
 			{
 				ViewportSize = PreviewScaler->DesignerSize.GetValue();
 			}
-			DrawRuler(*Scaler, Origin, Size, ViewportSize.X, true, DrawElements, LayerId + 20);
-			DrawRuler(*Scaler, Origin, Size, ViewportSize.Y, false, DrawElements, LayerId + 30);
+			const float UnitsToSlate = FMath::Min(
+				FMath::Abs(Size.X) / FMath::Max(ViewportSize.X, 1.0f),
+				FMath::Abs(Size.Y) / FMath::Max(ViewportSize.Y, 1.0f));
+			if (UnitsToSlate <= KINDA_SMALL_NUMBER) return;
+			DrawRuler(*Scaler, Origin, UnitsToSlate, ViewportSize.X, true, DrawElements, LayerId + 20);
+			DrawRuler(*Scaler, Origin, UnitsToSlate, ViewportSize.Y, false, DrawElements, LayerId + 30);
 		}
 	};
 
