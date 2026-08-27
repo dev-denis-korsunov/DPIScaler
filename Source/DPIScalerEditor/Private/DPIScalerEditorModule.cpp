@@ -15,7 +15,7 @@
 
 namespace UE::DPIScalerEditor::Private
 {
-	static constexpr float RulerThickness = 32.0f;
+	static constexpr float RulerThickness = 36.0f;
 	static constexpr float RulerGap = 4.0f;
 
 	static FLinearColor GetRuleColor(int32 Index)
@@ -62,7 +62,7 @@ namespace UE::DPIScalerEditor::Private
 			FSlateDrawElement::MakeLines(DrawElements, LayerId + 1, FPaintGeometry(), Points, ESlateDrawEffect::None, FLinearColor::White.CopyWithNewOpacity(0.35f), true, 1.0f);
 			if (bWidth)
 			{
-				FSlateDrawElement::MakeText(DrawElements, LayerId + 2, FPaintGeometry(RulerPosition + FVector2D(Position + 3.0f, 2.0f), FVector2D::ZeroVector, 1.0f), FText::AsNumber(Value), FCoreStyle::GetDefaultFontStyle("Regular", 8), ESlateDrawEffect::None, FLinearColor::White.CopyWithNewOpacity(0.7f));
+				FSlateDrawElement::MakeText(DrawElements, LayerId + 2, FPaintGeometry(RulerPosition + FVector2D(Position + 3.0f, 14.0f), FVector2D(48.0f, 11.0f), 1.0f), FText::AsNumber(Value), FCoreStyle::GetDefaultFontStyle("Regular", 8), ESlateDrawEffect::None, FLinearColor::White.CopyWithNewOpacity(0.7f));
 			}
 		}
 
@@ -81,9 +81,9 @@ namespace UE::DPIScalerEditor::Private
 				FSlateDrawElement::MakeLines(DrawElements, LayerId + 3, FPaintGeometry(), Points, ESlateDrawEffect::None, Color, true, bMinimum ? 2.5f : 1.5f);
 				const FString Label = FString::Printf(TEXT("%s%s%d"), Axis, bMinimum ? TEXT("≥") : TEXT("≤"), Value);
 				const FVector2D MarkerLabelPosition = bWidth
-					? RulerPosition + FVector2D(Position + 3.0f, 11.0f)
+					? RulerPosition + FVector2D(Position + 3.0f, 24.0f)
 					: RulerPosition + FVector2D(2.0f, Position + 2.0f);
-				FSlateDrawElement::MakeText(DrawElements, LayerId + 4, FPaintGeometry(MarkerLabelPosition, FVector2D::ZeroVector, 1.0f), FText::FromString(Label), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, Color);
+				FSlateDrawElement::MakeText(DrawElements, LayerId + 4, FPaintGeometry(MarkerLabelPosition, FVector2D(72.0f, 11.0f), 1.0f), FText::FromString(Label), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, Color);
 			};
 			DrawMarker(bWidth ? Rule.MinWidth : Rule.MinHeight, true, bWidth ? TEXT("W") : TEXT("H"));
 			DrawMarker(bWidth ? Rule.MaxWidth : Rule.MaxHeight, false, bWidth ? TEXT("W") : TEXT("H"));
@@ -92,8 +92,8 @@ namespace UE::DPIScalerEditor::Private
 		}
 
 		const FString SizeLabel = FString::Printf(TEXT("%s %d"), bWidth ? TEXT("W") : TEXT("H"), FMath::RoundToInt(CurrentViewportSize));
-		const FVector2D LabelPosition = bWidth ? RulerPosition + FVector2D(3.0f, RulerThickness - 12.0f) : RulerPosition + FVector2D(2.0f, 2.0f);
-		FSlateDrawElement::MakeText(DrawElements, LayerId + 5, FPaintGeometry(LabelPosition, FVector2D::ZeroVector, 1.0f), FText::FromString(SizeLabel), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
+		const FVector2D LabelPosition = RulerPosition + FVector2D(3.0f, 2.0f);
+		FSlateDrawElement::MakeText(DrawElements, LayerId + 5, FPaintGeometry(LabelPosition, FVector2D(64.0f, 11.0f), 1.0f), FText::FromString(SizeLabel), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
 	static void DrawActiveRuleStatus(const UDPIScalerWidget& Scaler, const UDPIScalerWidget* PreviewScaler, const FVector2D& Origin, const FVector2D& Size, const FVector2D& ViewportSize, FSlateWindowElementList& DrawElements, int32 LayerId)
@@ -103,11 +103,10 @@ namespace UE::DPIScalerEditor::Private
 		const float ProjectScale = PreviewScaler != nullptr && PreviewScaler->DesignerDpi.IsSet() ? PreviewScaler->DesignerDpi.GetValue() : 1.0f;
 		const float FinalScale = Scaler.ResolveTargetUIScale(ProjectScale, IntViewportSize, ActiveRule);
 		const FString RuleName = ActiveRule != nullptr ? ActiveRule->Name.ToString() : TEXT("Project DPI");
-		const FText Status = FText::FromString(FString::Printf(TEXT("Active rule: %s  |  Final scale: %.2f"), *RuleName, FinalScale));
-		const FVector2D StatusPosition = Origin + FVector2D(0.0f, Size.Y + RulerGap);
-		const FVector2D StatusSize(FMath::Min(Size.X, 300.0f), 22.0f);
-		FSlateDrawElement::MakeBox(DrawElements, LayerId, FPaintGeometry(StatusPosition, StatusSize, 1.0f), FCoreStyle::Get().GetBrush("WhiteBrush"), ESlateDrawEffect::None, FLinearColor(0.045f, 0.055f, 0.075f, 0.94f));
-		FSlateDrawElement::MakeText(DrawElements, LayerId + 1, FPaintGeometry(StatusPosition + FVector2D(6.0f, 3.0f), FVector2D::ZeroVector, 1.0f), Status, FCoreStyle::GetDefaultFontStyle("Bold", 9), ESlateDrawEffect::None, FLinearColor::White);
+		const FText Status = FText::FromString(FString::Printf(TEXT("Active: %s  •  Scale %.2f"), *RuleName, FinalScale));
+		const FVector2D StatusPosition = Origin + FVector2D(70.0f, -RulerThickness - RulerGap + 2.0f);
+		const FVector2D StatusSize(FMath::Max(Size.X - 76.0f, 120.0f), 12.0f);
+		FSlateDrawElement::MakeText(DrawElements, LayerId, FPaintGeometry(StatusPosition, StatusSize, 1.0f), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
 	class FDPIScalerDesignerExtension final : public FDesignerExtension

@@ -73,7 +73,7 @@ When a single **DPI Scaler** is selected in the UMG Designer, the plugin draws r
 - The left ruler represents viewport height.
 - `W` and `H` show the current preview viewport size.
 - Colored markers show enabled width, height, and short-side breakpoints from **DPI Rules**.
-- A status badge shows the active rule and final target scale.
+- A compact status inside the top ruler shows the active rule and final target scale.
 
 The rulers are a visual editing aid. Breakpoint values are currently edited in the **DPI Rules** array in the Details panel. Collapsed array entries show summaries such as `Mobile • Short Side ≤ 720 • Fixed 0.80 • P100`.
 
