@@ -7,7 +7,7 @@
 
 FDPIMediaQuery::FDPIMediaQuery()
 	: BlendType(EDPIMediaQueryBlendType::Override), ScreenMinWidth(0), ScreenMaxWidth(0), ScreenMinHeight(0), ScreenMaxHeight(0)
-	, ScreenMinAspectRatio(0.75f), ScreenMaxAspectRatio(1.33f), DPIScaleOverride(0.0f), MinDPIScale(0.0f), MaxDPIScale(1.0f)
+	, ScreenMinAspectRatio(0.75f), ScreenMaxAspectRatio(1.33f), DPIScaleOverride(1.0f), MinDPIScale(0.0f), MaxDPIScale(1.0f)
 	, CurveRule(EDPICurveRuleType::ByShortSide), SnapDPIScaleGrid(0.1f)
 	, bOverrideScreenMinWidth(false), bOverrideScreenMaxWidth(false), bOverrideScreenMinHeight(false), bOverrideScreenMaxHeight(false)
 	, bOverrideScreenMinAspectRatio(false), bOverrideScreenMaxAspectRatio(false), bOverrideDPIScaleOverride(false)
