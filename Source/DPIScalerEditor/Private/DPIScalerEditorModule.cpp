@@ -46,6 +46,10 @@ namespace UE::DPIScalerEditor::Private
 	static bool GetRuleAxisRange(const FDPIBreakpointRule& Rule, const FVector2D& ViewportSize, int32 RulerMaximum, bool bWidth, float& OutMinimum, float& OutMaximum)
 	{
 		const float AxisOtherSize = bWidth ? ViewportSize.Y : ViewportSize.X;
+		const int32 OtherMinimum = bWidth ? Rule.MinHeight : Rule.MinWidth;
+		const int32 OtherMaximum = bWidth ? Rule.MaxHeight : Rule.MaxWidth;
+		if (OtherMinimum > 0 && AxisOtherSize < OtherMinimum) return false;
+		if (OtherMaximum > 0 && AxisOtherSize > OtherMaximum) return false;
 		OutMinimum = bWidth ? Rule.MinWidth : Rule.MinHeight;
 		OutMaximum = (bWidth ? Rule.MaxWidth : Rule.MaxHeight) > 0 ? (bWidth ? Rule.MaxWidth : Rule.MaxHeight) : RulerMaximum;
 
@@ -119,7 +123,18 @@ namespace UE::DPIScalerEditor::Private
 			const FVector2D RangePosition = bWidth ? RulerPosition + FVector2D(Start, 0.0f) : RulerPosition + FVector2D(0.0f, Start);
 			const FVector2D RangeSize = bWidth ? FVector2D(Length, RulerThickness) : FVector2D(RulerThickness, Length);
 			const float Opacity = &Rule == ActiveRule ? 0.78f : 0.30f;
-			FSlateDrawElement::MakeBox(DrawElements, LayerId + 1, FPaintGeometry(RangePosition, RangeSize, 1.0f), WhiteBrush, ESlateDrawEffect::None, GetRuleColor(RuleIndex).CopyWithNewOpacity(Opacity));
+			const FLinearColor RuleColor = GetRuleColor(RuleIndex);
+			FSlateDrawElement::MakeBox(DrawElements, LayerId + 1, FPaintGeometry(RangePosition, RangeSize, 1.0f), WhiteBrush, ESlateDrawEffect::None, RuleColor.CopyWithNewOpacity(Opacity));
+
+			auto DrawRangeBoundary = [&](float Position)
+			{
+				const FVector2D BoundaryStart = bWidth ? RulerPosition + FVector2D(Position, 0.0f) : RulerPosition + FVector2D(0.0f, Position);
+				const FVector2D BoundaryEnd = bWidth ? RulerPosition + FVector2D(Position, RulerThickness) : RulerPosition + FVector2D(RulerThickness, Position);
+				const TArray<FVector2D> BoundaryPoints = { BoundaryStart, BoundaryEnd };
+				FSlateDrawElement::MakeLines(DrawElements, LayerId + 2, FPaintGeometry(), BoundaryPoints, ESlateDrawEffect::None, RuleColor.CopyWithNewOpacity(&Rule == ActiveRule ? 1.0f : 0.65f), true, &Rule == ActiveRule ? 2.0f : 1.0f);
+			};
+			if (RangeMinimum > 0.0f) DrawRangeBoundary(Start);
+			if (RangeMaximum < Maximum) DrawRangeBoundary(RangeMaximum * UnitsToSlate);
 		}
 
 		const int32 TickStep = Maximum <= 800 ? 100 : Maximum <= 2000 ? 250 : 500;
