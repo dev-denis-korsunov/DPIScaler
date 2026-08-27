@@ -54,6 +54,15 @@ For runtime changes, use the Blueprint node **Set Media Queries**. It replaces t
 
 The widget responds to UMG screen preview settings. Enable **Designer Mute** to temporarily disable its custom scale in the designer.
 
+When a single **DPI Scaler** is selected in the UMG Designer, the plugin draws responsive rulers above and to the left of the widget:
+
+- The top ruler represents viewport width.
+- The left ruler represents viewport height.
+- `W` and `H` show the current preview viewport size.
+- Colored markers show enabled minimum and maximum width or height constraints from **Media Queries**.
+
+The rulers are a visual editing aid. Breakpoint values are currently edited in the **Media Queries** array in the Details panel.
+
 ## Compatibility
 
-The plugin is a runtime module for Unreal Engine 5. It depends on `UMG`, `Slate`, and `SlateCore`.
+The plugin contains a runtime module and an editor-only UMG Designer extension for Unreal Engine 5. The runtime module depends on `UMG`, `Slate`, and `SlateCore`.

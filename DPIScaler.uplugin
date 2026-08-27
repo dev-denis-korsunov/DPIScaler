@@ -8,5 +8,8 @@
 	"CreatedBy": "Denis Korsunov",
 	"CanContainContent": false,
 	"EnabledByDefault": true,
-	"Modules": [{ "Name": "DPIScaler", "Type": "Runtime", "LoadingPhase": "Default" }]
+	"Modules": [
+		{ "Name": "DPIScaler", "Type": "Runtime", "LoadingPhase": "Default" },
+		{ "Name": "DPIScalerEditor", "Type": "Editor", "LoadingPhase": "Default" }
+	]
 }
