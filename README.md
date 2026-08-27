@@ -1,6 +1,6 @@
 # DPI Scaler
 
-`DPI Scaler` is a runtime UMG container widget that scales one child according to DPI media-query rules. It is useful when the project's global DPI curve is not enough and a specific UI subtree needs its own scaling behavior.
+`DPI Scaler` is a runtime UMG container widget that scales one child according to simple DPI breakpoint rules. It is useful when the project's global DPI curve is not enough and a specific UI subtree needs its own scaling behavior.
 
 ## Installation
 
@@ -10,8 +10,8 @@ Enable the **DPI Scaler** plugin in Unreal Editor, then restart the editor if pr
 
 1. Add a **DPI Scaler** widget to a Widget Blueprint.
 2. Add one child widget to it.
-3. Configure one or more entries in **Media Queries**.
-4. Enable only the overrides required by a query.
+3. Configure one or more entries in **DPI Rules**.
+4. Give more specific rules a higher **Priority**.
 
 The recommended hierarchy is:
 
@@ -23,31 +23,44 @@ DPI Scaler
 
 Use the DPI Scaler as the root container for the UI subtree that must be scaled. Keep its child as a single panel, typically a `Canvas Panel`.
 
-## Media queries
+## DPI breakpoint rules
 
-Each query can be limited by:
+Each enabled rule contains:
 
-- Minimum and maximum viewport width or height
-- Minimum and maximum aspect ratio
+- **Name**, **Enabled**, and **Priority**.
+- **Match**: orientation and a minimum or maximum short side.
+- **Advanced Match**: minimum or maximum width, height, and aspect ratio.
+- **Scale Mode**: `Use Project DPI`, `Fixed`, or `Curve`.
+- Optional **Limits**: minimum scale, maximum scale, and snap step.
 
-When a query matches, it can modify the scale with any combination of:
+Zero means unbounded or disabled for optional bounds and limits. `Fixed` and `Curve` produce a final **Target UI Scale**, not a multiplier.
 
-- **DPI Scale Override** — use an exact scale.
-- **Min DPI Scale** / **Max DPI Scale** — clamp the current scale.
-- **DPI Curve** — evaluate a runtime float curve by short side, long side, width, or height.
-- **Snap DPI Scale Grid** — round the scale to a grid value.
+Rules resolve as follows:
 
-Queries are evaluated in array order. `Override` replaces the current result; `Min` and `Max` combine the result with the current value.
+1. The matching enabled rule with the highest priority wins.
+2. If priorities are equal, the first rule in the array wins.
+3. If no rule matches, the project DPI scale is used.
+4. Limits and snap are applied to the selected result, and the final scale is kept positive.
+
+A practical starting set is:
+
+| Rule | Match | Scale |
+| --- | --- | --- |
+| Mobile | Short Side ≤ 720 | Fixed 0.80 |
+| Tablet | Short Side ≤ 1080 | Fixed 0.95 |
+| Default | Any | Use Project DPI |
+
+Assign priorities such as `100`, `50`, and `0` respectively.
 
 ## Runtime updates
 
-For runtime changes, use the Blueprint node **Set Media Queries**. It replaces the media-query array and invalidates the Slate layout, so the new scale is applied immediately.
+For runtime changes, use the Blueprint node **Set DPI Rules**. It replaces the rule array and invalidates the Slate layout, so the new scale is applied immediately.
 
 ## Layout guidelines
 
 - Prefer `DPI Scaler → Canvas Panel → content`.
 - Do not place a `DPI Scaler` inside a `Scale Box`, and do not wrap a `Scale Box` with a `DPI Scaler` in the same layout branch. Both widgets calculate scale from layout geometry, which can lead to double scaling or unstable desired sizes.
-- Avoid nesting DPI Scalers unless it is intentional. Nested scalers compose correctly, but each level applies its own media-query rules.
+- Avoid nesting DPI Scalers unless it is intentional. Each nested scaler resolves its own final target scale relative to the parent scaler.
 - Test at all target resolutions and aspect ratios, especially if anchors, fixed canvas offsets, or `Scale Box` are involved.
 
 ## Editor preview
@@ -59,10 +72,13 @@ When a single **DPI Scaler** is selected in the UMG Designer, the plugin draws r
 - The top ruler represents viewport width.
 - The left ruler represents viewport height.
 - `W` and `H` show the current preview viewport size.
-- Colored markers show enabled minimum and maximum width or height constraints from **Media Queries**.
+- Colored markers show enabled width, height, and short-side breakpoints from **DPI Rules**.
+- A status badge shows the active rule and final target scale.
 
-The rulers are a visual editing aid. Breakpoint values are currently edited in the **Media Queries** array in the Details panel.
+The rulers are a visual editing aid. Breakpoint values are currently edited in the **DPI Rules** array in the Details panel. Collapsed array entries show summaries such as `Mobile • Short Side ≤ 720 • Fixed 0.80 • P100`.
 
 ## Compatibility
 
 The plugin contains a runtime module and an editor-only UMG Designer extension for Unreal Engine 5. The runtime module depends on `UMG`, `Slate`, and `SlateCore`.
+
+The old Media Queries API is intentionally not retained. Projects upgrading from an earlier plugin revision must recreate old rules with `FDPIBreakpointRule` and replace `Set Media Queries` Blueprint nodes with `Set DPI Rules`.

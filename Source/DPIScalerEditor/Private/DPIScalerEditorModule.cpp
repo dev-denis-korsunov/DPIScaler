@@ -1,10 +1,12 @@
 #include "Modules/ModuleManager.h"
 
 #include "DPIScalerWidget.h"
+#include "DPIScalerRuleCustomization.h"
 #include "DesignerExtension.h"
 #include "IUMGDesigner.h"
 #include "IHasDesignerExtensibility.h"
 #include "Rendering/DrawElements.h"
+#include "PropertyEditorModule.h"
 #include "Styling/CoreStyle.h"
 #include "UMGEditorModule.h"
 #include "WidgetReference.h"
@@ -13,7 +15,7 @@
 
 namespace UE::DPIScalerEditor::Private
 {
-	static constexpr float RulerThickness = 24.0f;
+	static constexpr float RulerThickness = 32.0f;
 	static constexpr float RulerGap = 4.0f;
 
 	static FLinearColor GetRuleColor(int32 Index)
@@ -28,22 +30,22 @@ namespace UE::DPIScalerEditor::Private
 		return Colors[Index % UE_ARRAY_COUNT(Colors)];
 	}
 
-	static int32 GetRulerMaximum(float CurrentSize, const TArray<FDPIMediaQuery>& Queries, bool bWidth)
+	static int32 GetRulerMaximum(float CurrentSize, const TArray<FDPIBreakpointRule>& Rules, bool bWidth)
 	{
 		int32 Maximum = FMath::Max(1, FMath::CeilToInt(CurrentSize));
-		for (const FDPIMediaQuery& Query : Queries)
+		for (const FDPIBreakpointRule& Rule : Rules)
 		{
-			const bool bHasMin = bWidth ? Query.bOverrideScreenMinWidth : Query.bOverrideScreenMinHeight;
-			const bool bHasMax = bWidth ? Query.bOverrideScreenMaxWidth : Query.bOverrideScreenMaxHeight;
-			if (bHasMin) Maximum = FMath::Max(Maximum, bWidth ? Query.ScreenMinWidth : Query.ScreenMinHeight);
-			if (bHasMax) Maximum = FMath::Max(Maximum, bWidth ? Query.ScreenMaxWidth : Query.ScreenMaxHeight);
+			Maximum = FMath::Max(Maximum, bWidth ? Rule.MinWidth : Rule.MinHeight);
+			Maximum = FMath::Max(Maximum, bWidth ? Rule.MaxWidth : Rule.MaxHeight);
+			Maximum = FMath::Max(Maximum, Rule.MinShortSide);
+			Maximum = FMath::Max(Maximum, Rule.MaxShortSide);
 		}
 		return Maximum;
 	}
 
 	static void DrawRuler(const UDPIScalerWidget& Scaler, const FVector2D& Origin, float UnitsToSlate, float CurrentViewportSize, bool bWidth, FSlateWindowElementList& DrawElements, int32 LayerId)
 	{
-		const int32 Maximum = GetRulerMaximum(CurrentViewportSize, Scaler.MediaQueries, bWidth);
+		const int32 Maximum = GetRulerMaximum(CurrentViewportSize, Scaler.DPIRules, bWidth);
 		const float RulerLength = Maximum * UnitsToSlate;
 		const FVector2D RulerPosition = bWidth ? FVector2D(Origin.X, Origin.Y - RulerThickness - RulerGap) : FVector2D(Origin.X - RulerThickness - RulerGap, Origin.Y);
 		const FVector2D RulerSize = bWidth ? FVector2D(RulerLength, RulerThickness) : FVector2D(RulerThickness, RulerLength);
@@ -64,34 +66,48 @@ namespace UE::DPIScalerEditor::Private
 			}
 		}
 
-		for (int32 QueryIndex = 0; QueryIndex < Scaler.MediaQueries.Num(); ++QueryIndex)
+		for (int32 RuleIndex = 0; RuleIndex < Scaler.DPIRules.Num(); ++RuleIndex)
 		{
-			const FDPIMediaQuery& Query = Scaler.MediaQueries[QueryIndex];
-			const FLinearColor Color = GetRuleColor(QueryIndex);
-			const bool bHasMin = bWidth ? Query.bOverrideScreenMinWidth : Query.bOverrideScreenMinHeight;
-			const bool bHasMax = bWidth ? Query.bOverrideScreenMaxWidth : Query.bOverrideScreenMaxHeight;
-			const int32 MinValue = bWidth ? Query.ScreenMinWidth : Query.ScreenMinHeight;
-			const int32 MaxValue = bWidth ? Query.ScreenMaxWidth : Query.ScreenMaxHeight;
-			auto DrawMarker = [&](int32 Value, bool bMinimum)
+			const FDPIBreakpointRule& Rule = Scaler.DPIRules[RuleIndex];
+			if (!Rule.bEnabled) continue;
+			const FLinearColor Color = GetRuleColor(RuleIndex);
+			auto DrawMarker = [&](int32 Value, bool bMinimum, const TCHAR* Axis)
 			{
+				if (Value <= 0) return;
 				const float Position = FMath::Clamp(Value * UnitsToSlate, 0.0f, RulerLength);
 				const FVector2D Start = bWidth ? RulerPosition + FVector2D(Position, 0.0f) : RulerPosition + FVector2D(0.0f, Position);
 				const FVector2D End = bWidth ? RulerPosition + FVector2D(Position, RulerThickness) : RulerPosition + FVector2D(RulerThickness, Position);
 				const TArray<FVector2D> Points = { Start, End };
 				FSlateDrawElement::MakeLines(DrawElements, LayerId + 3, FPaintGeometry(), Points, ESlateDrawEffect::None, Color, true, bMinimum ? 2.5f : 1.5f);
-				const FString Label = FString::Printf(TEXT("%s%d"), bMinimum ? TEXT("≥") : TEXT("≤"), Value);
+				const FString Label = FString::Printf(TEXT("%s%s%d"), Axis, bMinimum ? TEXT("≥") : TEXT("≤"), Value);
 				const FVector2D MarkerLabelPosition = bWidth
 					? RulerPosition + FVector2D(Position + 3.0f, 11.0f)
 					: RulerPosition + FVector2D(2.0f, Position + 2.0f);
 				FSlateDrawElement::MakeText(DrawElements, LayerId + 4, FPaintGeometry(MarkerLabelPosition, FVector2D::ZeroVector, 1.0f), FText::FromString(Label), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, Color);
 			};
-			if (bHasMin) DrawMarker(MinValue, true);
-			if (bHasMax) DrawMarker(MaxValue, false);
+			DrawMarker(bWidth ? Rule.MinWidth : Rule.MinHeight, true, bWidth ? TEXT("W") : TEXT("H"));
+			DrawMarker(bWidth ? Rule.MaxWidth : Rule.MaxHeight, false, bWidth ? TEXT("W") : TEXT("H"));
+			DrawMarker(Rule.MinShortSide, true, TEXT("S"));
+			DrawMarker(Rule.MaxShortSide, false, TEXT("S"));
 		}
 
 		const FString SizeLabel = FString::Printf(TEXT("%s %d"), bWidth ? TEXT("W") : TEXT("H"), FMath::RoundToInt(CurrentViewportSize));
 		const FVector2D LabelPosition = bWidth ? RulerPosition + FVector2D(3.0f, RulerThickness - 12.0f) : RulerPosition + FVector2D(2.0f, 2.0f);
 		FSlateDrawElement::MakeText(DrawElements, LayerId + 5, FPaintGeometry(LabelPosition, FVector2D::ZeroVector, 1.0f), FText::FromString(SizeLabel), FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
+	}
+
+	static void DrawActiveRuleStatus(const UDPIScalerWidget& Scaler, const UDPIScalerWidget* PreviewScaler, const FVector2D& Origin, const FVector2D& Size, const FVector2D& ViewportSize, FSlateWindowElementList& DrawElements, int32 LayerId)
+	{
+		const FIntPoint IntViewportSize = ViewportSize.IntPoint();
+		const FDPIBreakpointRule* ActiveRule = Scaler.FindActiveRule(IntViewportSize);
+		const float ProjectScale = PreviewScaler != nullptr && PreviewScaler->DesignerDpi.IsSet() ? PreviewScaler->DesignerDpi.GetValue() : 1.0f;
+		const float FinalScale = Scaler.ResolveTargetUIScale(ProjectScale, IntViewportSize, ActiveRule);
+		const FString RuleName = ActiveRule != nullptr ? ActiveRule->Name.ToString() : TEXT("Project DPI");
+		const FText Status = FText::FromString(FString::Printf(TEXT("Active rule: %s  |  Final scale: %.2f"), *RuleName, FinalScale));
+		const FVector2D StatusPosition = Origin + FVector2D(0.0f, Size.Y + RulerGap);
+		const FVector2D StatusSize(FMath::Min(Size.X, 300.0f), 22.0f);
+		FSlateDrawElement::MakeBox(DrawElements, LayerId, FPaintGeometry(StatusPosition, StatusSize, 1.0f), FCoreStyle::Get().GetBrush("WhiteBrush"), ESlateDrawEffect::None, FLinearColor(0.045f, 0.055f, 0.075f, 0.94f));
+		FSlateDrawElement::MakeText(DrawElements, LayerId + 1, FPaintGeometry(StatusPosition + FVector2D(6.0f, 3.0f), FVector2D::ZeroVector, 1.0f), Status, FCoreStyle::GetDefaultFontStyle("Bold", 9), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
 	class FDPIScalerDesignerExtension final : public FDesignerExtension
@@ -125,6 +141,7 @@ namespace UE::DPIScalerEditor::Private
 			if (UnitsToSlate <= KINDA_SMALL_NUMBER) return;
 			DrawRuler(*Scaler, Origin, UnitsToSlate, ViewportSize.X, true, DrawElements, LayerId + 20);
 			DrawRuler(*Scaler, Origin, UnitsToSlate, ViewportSize.Y, false, DrawElements, LayerId + 30);
+			DrawActiveRuleStatus(*Scaler, PreviewScaler, Origin, Size, ViewportSize, DrawElements, LayerId + 40);
 		}
 	};
 
@@ -144,6 +161,9 @@ class FDPIScalerEditorModule final : public IModuleInterface
 	{
 		ExtensionFactory = MakeShared<UE::DPIScalerEditor::Private::FDPIScalerDesignerExtensionFactory>();
 		FModuleManager::LoadModuleChecked<IUMGEditorModule>("UMGEditor").GetDesignerExtensibilityManager()->AddDesignerExtensionFactory(ExtensionFactory.ToSharedRef());
+		FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+		PropertyEditor.RegisterCustomPropertyTypeLayout(FDPIBreakpointRule::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FDPIScalerRuleCustomization::MakeInstance));
+		PropertyEditor.NotifyCustomizationModuleChanged();
 	}
 
 	virtual void ShutdownModule() override
@@ -156,6 +176,11 @@ class FDPIScalerEditorModule final : public IModuleInterface
 			}
 		}
 		ExtensionFactory.Reset();
+		if (FPropertyEditorModule* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
+		{
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FDPIBreakpointRule::StaticStruct()->GetFName());
+			PropertyEditor->NotifyCustomizationModuleChanged();
+		}
 	}
 
 	TSharedPtr<IDesignerExtensionFactory> ExtensionFactory;

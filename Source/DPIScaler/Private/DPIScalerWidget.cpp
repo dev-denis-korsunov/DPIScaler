@@ -5,16 +5,14 @@
 #include "UObject/UnrealType.h"
 #include "Widgets/Layout/SDPIScaler.h"
 
-FDPIMediaQuery::FDPIMediaQuery()
-	: BlendType(EDPIMediaQueryBlendType::Override), ScreenMinWidth(0), ScreenMaxWidth(0), ScreenMinHeight(0), ScreenMaxHeight(0)
-	, ScreenMinAspectRatio(0.75f), ScreenMaxAspectRatio(1.33f), DPIScaleOverride(1.0f), MinDPIScale(0.0f), MaxDPIScale(1.0f)
-	, CurveRule(EDPICurveRuleType::ByShortSide), SnapDPIScaleGrid(0.1f)
-	, bOverrideScreenMinWidth(false), bOverrideScreenMaxWidth(false), bOverrideScreenMinHeight(false), bOverrideScreenMaxHeight(false)
-	, bOverrideScreenMinAspectRatio(false), bOverrideScreenMaxAspectRatio(false), bOverrideDPIScaleOverride(false)
-	, bOverrideMinDPIScale(false), bOverrideMaxDPIScale(false), bOverrideCurve(false), bSnapDPIToGrid(false)
+FDPIBreakpointRule::FDPIBreakpointRule()
+	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any)
+	, MinShortSide(0), MaxShortSide(0), MinWidth(0), MaxWidth(0), MinHeight(0), MaxHeight(0)
+	, MinAspectRatio(0.0f), MaxAspectRatio(0.0f), ScaleMode(EDPIBreakpointScaleMode::UseProjectDPI)
+	, TargetUIScale(1.0f), CurveAxis(EDPIBreakpointCurveAxis::ShortSide), MinScale(0.0f), MaxScale(0.0f), SnapStep(0.0f)
 {
-	DPICurve.GetRichCurve()->AddKey(0.0f, 0.0f);
-	DPICurve.GetRichCurve()->AddKey(1080.0f, 1.0f);
+	ScaleCurve.GetRichCurve()->AddKey(0.0f, 1.0f);
+	ScaleCurve.GetRichCurve()->AddKey(1080.0f, 1.0f);
 }
 
 UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -76,40 +74,66 @@ const UDPIScalerWidget* UDPIScalerWidget::FindParentDPIScaler() const
 
 float UDPIScalerWidget::GetAbsoluteDesiredDPIScale(float ApplicationScale, const FIntPoint& ViewportSize) const
 {
-	const UDPIScalerWidget* ParentScaler = FindParentDPIScaler();
-	const float SourceScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
-	return GetDesiredDPIScale(SourceScale, ViewportSize);
+	return ResolveTargetUIScale(ApplicationScale, ViewportSize, FindActiveRule(ViewportSize));
 }
 
-float UDPIScalerWidget::GetDesiredDPIScale(float SourceScale, const FIntPoint& ViewportSize) const
+const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& ViewportSize) const
 {
-	float DesiredScale = SourceScale;
-	for (const FDPIMediaQuery& Query : MediaQueries)
+	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return nullptr;
+	const int32 ShortSide = FMath::Min(ViewportSize.X, ViewportSize.Y);
+	const float AspectRatio = static_cast<float>(ViewportSize.X) / static_cast<float>(ViewportSize.Y);
+	const FDPIBreakpointRule* ActiveRule = nullptr;
+	for (const FDPIBreakpointRule& Rule : DPIRules)
 	{
-		if (!(Query.bOverrideDPIScaleOverride || Query.bOverrideMinDPIScale || Query.bOverrideMaxDPIScale || Query.bOverrideCurve || Query.bSnapDPIToGrid)) continue;
-		const FIntRect AllowedRegion(Query.bOverrideScreenMinWidth ? Query.ScreenMinWidth : 0, Query.bOverrideScreenMinHeight ? Query.ScreenMinHeight : 0, (Query.bOverrideScreenMaxWidth ? Query.ScreenMaxWidth : ViewportSize.X) + 1, (Query.bOverrideScreenMaxHeight ? Query.ScreenMaxHeight : ViewportSize.Y) + 1);
-		if (!AllowedRegion.Contains(ViewportSize)) continue;
-		const float AspectRatio = static_cast<float>(ViewportSize.X) / static_cast<float>(ViewportSize.Y);
-		if (!FMath::IsWithin(AspectRatio, Query.bOverrideScreenMinAspectRatio ? Query.ScreenMinAspectRatio : KINDA_SMALL_NUMBER, Query.bOverrideScreenMaxAspectRatio ? Query.ScreenMaxAspectRatio : BIG_NUMBER)) continue;
-		float QueryScale = DesiredScale;
-		if (Query.bOverrideCurve)
-		{
-			float CurveTime = ViewportSize.X;
-			switch (Query.CurveRule) { case EDPICurveRuleType::ByScreenHeight: CurveTime = ViewportSize.Y; break; case EDPICurveRuleType::ByShortSide: CurveTime = FMath::Min(ViewportSize.X, ViewportSize.Y); break; case EDPICurveRuleType::ByLongSide: CurveTime = FMath::Max(ViewportSize.X, ViewportSize.Y); break; default: break; }
-			QueryScale = Query.DPICurve.GetRichCurveConst()->Eval(CurveTime);
-		}
-		if (Query.bOverrideDPIScaleOverride) QueryScale = Query.DPIScaleOverride;
-		if (Query.bOverrideMinDPIScale) QueryScale = FMath::Max(Query.MinDPIScale, QueryScale);
-		if (Query.bOverrideMaxDPIScale) QueryScale = FMath::Min(Query.MaxDPIScale, QueryScale);
-		if (Query.bSnapDPIToGrid && !FMath::IsNearlyZero(Query.SnapDPIScaleGrid)) QueryScale = FMath::GridSnap(QueryScale, Query.SnapDPIScaleGrid);
-		switch (Query.BlendType) { case EDPIMediaQueryBlendType::Override: DesiredScale = QueryScale; break; case EDPIMediaQueryBlendType::Min: DesiredScale = FMath::Min(DesiredScale, QueryScale); break; case EDPIMediaQueryBlendType::Max: DesiredScale = FMath::Max(DesiredScale, QueryScale); break; }
+		if (!Rule.bEnabled || (ActiveRule != nullptr && Rule.Priority <= ActiveRule->Priority)) continue;
+		if (Rule.Orientation == EDPIBreakpointOrientation::Portrait && ViewportSize.X >= ViewportSize.Y) continue;
+		if (Rule.Orientation == EDPIBreakpointOrientation::Landscape && ViewportSize.X < ViewportSize.Y) continue;
+		if (Rule.MinShortSide > 0 && ShortSide < Rule.MinShortSide) continue;
+		if (Rule.MaxShortSide > 0 && ShortSide > Rule.MaxShortSide) continue;
+		if (Rule.MinWidth > 0 && ViewportSize.X < Rule.MinWidth) continue;
+		if (Rule.MaxWidth > 0 && ViewportSize.X > Rule.MaxWidth) continue;
+		if (Rule.MinHeight > 0 && ViewportSize.Y < Rule.MinHeight) continue;
+		if (Rule.MaxHeight > 0 && ViewportSize.Y > Rule.MaxHeight) continue;
+		if (Rule.MinAspectRatio > 0.0f && AspectRatio < Rule.MinAspectRatio) continue;
+		if (Rule.MaxAspectRatio > 0.0f && AspectRatio > Rule.MaxAspectRatio) continue;
+		ActiveRule = &Rule;
 	}
-	return DesiredScale;
+	return ActiveRule;
 }
 
-void UDPIScalerWidget::SetMediaQueries(const TArray<FDPIMediaQuery>& InMediaQueries)
+float UDPIScalerWidget::ResolveTargetUIScale(float ProjectDPIScale, const FIntPoint& ViewportSize, const FDPIBreakpointRule* Rule) const
 {
-	MediaQueries = InMediaQueries;
+	float Result = FMath::IsFinite(ProjectDPIScale) && ProjectDPIScale > 0.0f ? ProjectDPIScale : 1.0f;
+	if (Rule == nullptr) return Result;
+
+	if (Rule->ScaleMode == EDPIBreakpointScaleMode::Fixed)
+	{
+		Result = Rule->TargetUIScale;
+	}
+	else if (Rule->ScaleMode == EDPIBreakpointScaleMode::Curve)
+	{
+		float CurveTime = FMath::Min(ViewportSize.X, ViewportSize.Y);
+		switch (Rule->CurveAxis)
+		{
+		case EDPIBreakpointCurveAxis::LongSide: CurveTime = FMath::Max(ViewportSize.X, ViewportSize.Y); break;
+		case EDPIBreakpointCurveAxis::ScreenWidth: CurveTime = ViewportSize.X; break;
+		case EDPIBreakpointCurveAxis::ScreenHeight: CurveTime = ViewportSize.Y; break;
+		default: break;
+		}
+		Result = Rule->ScaleCurve.GetRichCurveConst()->Eval(CurveTime, 1.0f);
+	}
+
+	if (!FMath::IsFinite(Result)) Result = 1.0f;
+	const float LowerLimit = Rule->MinScale > 0.0f ? Rule->MinScale : UE_SMALL_NUMBER;
+	const float UpperLimit = Rule->MaxScale > 0.0f ? FMath::Max(Rule->MaxScale, LowerLimit) : BIG_NUMBER;
+	Result = FMath::Clamp(Result, LowerLimit, UpperLimit);
+	if (Rule->SnapStep > 0.0f) Result = FMath::GridSnap(Result, Rule->SnapStep);
+	return FMath::Clamp(Result, LowerLimit, UpperLimit);
+}
+
+void UDPIScalerWidget::SetDPIRules(const TArray<FDPIBreakpointRule>& InDPIRules)
+{
+	DPIRules = InDPIRules;
 	InvalidateLayoutAndVolatility();
 }
 
