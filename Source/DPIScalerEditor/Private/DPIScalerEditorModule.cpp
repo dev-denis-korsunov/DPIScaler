@@ -37,8 +37,16 @@ namespace UE::DPIScalerEditor::Private
 		{
 			Maximum = FMath::Max(Maximum, bWidth ? Rule.MinWidth : Rule.MinHeight);
 			Maximum = FMath::Max(Maximum, bWidth ? Rule.MaxWidth : Rule.MaxHeight);
-			Maximum = FMath::Max(Maximum, Rule.MinShortSide);
-			Maximum = FMath::Max(Maximum, Rule.MaxShortSide);
+			const bool bMetricUsesAxis = Rule.SizeMetric == EDPIBreakpointSizeMetric::BothDimensions
+				|| Rule.SizeMetric == EDPIBreakpointSizeMetric::ShortSide
+				|| Rule.SizeMetric == EDPIBreakpointSizeMetric::LongSide
+				|| (bWidth && Rule.SizeMetric == EDPIBreakpointSizeMetric::Width)
+				|| (!bWidth && Rule.SizeMetric == EDPIBreakpointSizeMetric::Height);
+			if (bMetricUsesAxis)
+			{
+				Maximum = FMath::Max(Maximum, Rule.MinShortSide);
+				Maximum = FMath::Max(Maximum, Rule.MaxShortSide);
+			}
 		}
 		return Maximum;
 	}
@@ -53,14 +61,43 @@ namespace UE::DPIScalerEditor::Private
 		OutMinimum = bWidth ? Rule.MinWidth : Rule.MinHeight;
 		OutMaximum = (bWidth ? Rule.MaxWidth : Rule.MaxHeight) > 0 ? (bWidth ? Rule.MaxWidth : Rule.MaxHeight) : RulerMaximum;
 
-		if (Rule.MinShortSide > 0)
+		switch (Rule.SizeMetric)
 		{
-			if (AxisOtherSize < Rule.MinShortSide) return false;
-			OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
-		}
-		if (Rule.MaxShortSide > 0 && AxisOtherSize > Rule.MaxShortSide)
-		{
-			OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+		case EDPIBreakpointSizeMetric::BothDimensions:
+			if (Rule.MinShortSide > 0 && AxisOtherSize < Rule.MinShortSide) return false;
+			if (Rule.MaxShortSide > 0 && AxisOtherSize > Rule.MaxShortSide) return false;
+			if (Rule.MinShortSide > 0) OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
+			if (Rule.MaxShortSide > 0) OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+			break;
+		case EDPIBreakpointSizeMetric::LongSide:
+			if (Rule.MinShortSide > 0 && AxisOtherSize < Rule.MinShortSide) OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
+			if (Rule.MaxShortSide > 0 && AxisOtherSize > Rule.MaxShortSide) return false;
+			if (Rule.MaxShortSide > 0) OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+			break;
+		case EDPIBreakpointSizeMetric::Width:
+			if (bWidth)
+			{
+				if (Rule.MinShortSide > 0) OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
+				if (Rule.MaxShortSide > 0) OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+			}
+			else if ((Rule.MinShortSide > 0 && ViewportSize.X < Rule.MinShortSide) || (Rule.MaxShortSide > 0 && ViewportSize.X > Rule.MaxShortSide)) return false;
+			break;
+		case EDPIBreakpointSizeMetric::Height:
+			if (!bWidth)
+			{
+				if (Rule.MinShortSide > 0) OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
+				if (Rule.MaxShortSide > 0) OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+			}
+			else if ((Rule.MinShortSide > 0 && ViewportSize.Y < Rule.MinShortSide) || (Rule.MaxShortSide > 0 && ViewportSize.Y > Rule.MaxShortSide)) return false;
+			break;
+		default:
+			if (Rule.MinShortSide > 0)
+			{
+				if (AxisOtherSize < Rule.MinShortSide) return false;
+				OutMinimum = FMath::Max(OutMinimum, static_cast<float>(Rule.MinShortSide));
+			}
+			if (Rule.MaxShortSide > 0 && AxisOtherSize > Rule.MaxShortSide) OutMaximum = FMath::Min(OutMaximum, static_cast<float>(Rule.MaxShortSide));
+			break;
 		}
 
 		if (Rule.Orientation == EDPIBreakpointOrientation::Portrait)
@@ -172,8 +209,20 @@ namespace UE::DPIScalerEditor::Private
 			};
 			DrawMarker(bWidth ? Rule.MinWidth : Rule.MinHeight, true, bWidth ? TEXT("W") : TEXT("H"));
 			DrawMarker(bWidth ? Rule.MaxWidth : Rule.MaxHeight, false, bWidth ? TEXT("W") : TEXT("H"));
-			DrawMarker(Rule.MinShortSide, true, TEXT("S"));
-			DrawMarker(Rule.MaxShortSide, false, TEXT("S"));
+			const bool bShowMetricMarker = Rule.SizeMetric == EDPIBreakpointSizeMetric::BothDimensions
+				|| Rule.SizeMetric == EDPIBreakpointSizeMetric::ShortSide
+				|| Rule.SizeMetric == EDPIBreakpointSizeMetric::LongSide
+				|| (bWidth && Rule.SizeMetric == EDPIBreakpointSizeMetric::Width)
+				|| (!bWidth && Rule.SizeMetric == EDPIBreakpointSizeMetric::Height);
+			if (bShowMetricMarker)
+			{
+				const TCHAR* MetricLabel = Rule.SizeMetric == EDPIBreakpointSizeMetric::BothDimensions ? TEXT("WH")
+					: Rule.SizeMetric == EDPIBreakpointSizeMetric::LongSide ? TEXT("L")
+					: Rule.SizeMetric == EDPIBreakpointSizeMetric::Width ? TEXT("W")
+					: Rule.SizeMetric == EDPIBreakpointSizeMetric::Height ? TEXT("H") : TEXT("S");
+				DrawMarker(Rule.MinShortSide, true, MetricLabel);
+				DrawMarker(Rule.MaxShortSide, false, MetricLabel);
+			}
 		}
 
 		const FString SizeLabel = FString::Printf(TEXT("%s %d"), bWidth ? TEXT("W") : TEXT("H"), FMath::RoundToInt(CurrentViewportSize));

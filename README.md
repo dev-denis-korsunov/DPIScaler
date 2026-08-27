@@ -28,12 +28,19 @@ Use the DPI Scaler as the root container for the UI subtree that must be scaled.
 Each enabled rule contains:
 
 - **Name**, **Enabled**, and **Priority**.
-- **Match**: orientation and a minimum or maximum short side.
+- **Match**: orientation, a size metric, and an optional minimum or maximum size.
 - **Advanced Match**: minimum or maximum width, height, and aspect ratio.
 - **Scale Mode**: `Use Project DPI`, `Fixed`, or `Curve`.
 - Optional **Limits**: minimum scale, maximum scale, and snap step.
 
 Zero means unbounded or disabled for optional bounds and limits. `Fixed` and `Curve` produce a final **Target UI Scale**, not a multiplier.
+
+**Size Metric** controls how the primary size range is interpreted:
+
+- `Both Dimensions` (default) requires both width and height to be inside the range and produces a bounded rectangle.
+- `Short Side` evaluates `min(width, height)` and can remain unbounded on one axis when the other axis already satisfies the rule.
+- `Long Side` evaluates `max(width, height)`.
+- `Width` and `Height` evaluate only the selected axis.
 
 Rules resolve as follows:
 
@@ -46,8 +53,8 @@ A practical starting set is:
 
 | Rule | Match | Scale |
 | --- | --- | --- |
-| Mobile | Short Side ≤ 720 | Fixed 0.80 |
-| Tablet | Short Side ≤ 1080 | Fixed 0.95 |
+| Mobile | Both Dimensions ≤ 720 | Fixed 0.80 |
+| Tablet | Both Dimensions ≤ 1080 | Fixed 0.95 |
 | Default | Any | Use Project DPI |
 
 Assign priorities such as `100`, `50`, and `0` respectively.
@@ -75,10 +82,10 @@ When a single **DPI Scaler** is selected in the UMG Designer, the plugin draws r
 - Each enabled rule gets a stable palette color. Colored ranges show where that rule can match for the current opposite axis, including orientation and aspect-ratio conditions.
 - Each ruler is a slice through the complete two-dimensional match region: a width range is shown only when the current height satisfies the rule, and a height range is shown only when the current width satisfies it.
 - Higher-priority rules paint over lower-priority rules only inside their own ranges. The currently active rule is rendered with dominant opacity; inactive ranges remain visible but muted.
-- Colored markers show exact width, height, and short-side breakpoints from **DPI Rules**.
+- Colored markers show exact size-metric, width, and height breakpoints from **DPI Rules**.
 - A compact status inside the top ruler shows the active rule and final target scale.
 
-The rulers are a visual editing aid. Breakpoint values are currently edited in the **DPI Rules** array in the Details panel. Collapsed array entries show summaries such as `Mobile • Short Side ≤ 720 • Fixed 0.80 • P100`.
+The rulers are a visual editing aid. Breakpoint values are currently edited in the **DPI Rules** array in the Details panel. Collapsed array entries show summaries such as `Mobile • W/H ≤ 720 • Fixed 0.80 • P100`.
 
 ## Compatibility
 

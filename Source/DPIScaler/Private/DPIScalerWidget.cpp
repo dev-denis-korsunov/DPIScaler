@@ -6,7 +6,7 @@
 #include "Widgets/Layout/SDPIScaler.h"
 
 FDPIBreakpointRule::FDPIBreakpointRule()
-	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any)
+	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any), SizeMetric(EDPIBreakpointSizeMetric::BothDimensions)
 	, MinShortSide(0), MaxShortSide(0), MinWidth(0), MaxWidth(0), MinHeight(0), MaxHeight(0)
 	, MinAspectRatio(0.0f), MaxAspectRatio(0.0f), ScaleMode(EDPIBreakpointScaleMode::UseProjectDPI)
 	, TargetUIScale(1.0f), CurveAxis(EDPIBreakpointCurveAxis::ShortSide), MinScale(0.0f), MaxScale(0.0f), SnapStep(0.0f)
@@ -80,7 +80,6 @@ float UDPIScalerWidget::GetAbsoluteDesiredDPIScale(float ApplicationScale, const
 const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& ViewportSize) const
 {
 	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return nullptr;
-	const int32 ShortSide = FMath::Min(ViewportSize.X, ViewportSize.Y);
 	const float AspectRatio = static_cast<float>(ViewportSize.X) / static_cast<float>(ViewportSize.Y);
 	const FDPIBreakpointRule* ActiveRule = nullptr;
 	for (const FDPIBreakpointRule& Rule : DPIRules)
@@ -88,8 +87,31 @@ const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& View
 		if (!Rule.bEnabled || (ActiveRule != nullptr && Rule.Priority <= ActiveRule->Priority)) continue;
 		if (Rule.Orientation == EDPIBreakpointOrientation::Portrait && ViewportSize.X >= ViewportSize.Y) continue;
 		if (Rule.Orientation == EDPIBreakpointOrientation::Landscape && ViewportSize.X < ViewportSize.Y) continue;
-		if (Rule.MinShortSide > 0 && ShortSide < Rule.MinShortSide) continue;
-		if (Rule.MaxShortSide > 0 && ShortSide > Rule.MaxShortSide) continue;
+		int32 MetricValue = 0;
+		switch (Rule.SizeMetric)
+		{
+		case EDPIBreakpointSizeMetric::BothDimensions:
+			if (Rule.MinShortSide > 0 && (ViewportSize.X < Rule.MinShortSide || ViewportSize.Y < Rule.MinShortSide)) continue;
+			if (Rule.MaxShortSide > 0 && (ViewportSize.X > Rule.MaxShortSide || ViewportSize.Y > Rule.MaxShortSide)) continue;
+			break;
+		case EDPIBreakpointSizeMetric::LongSide:
+			MetricValue = FMath::Max(ViewportSize.X, ViewportSize.Y);
+			break;
+		case EDPIBreakpointSizeMetric::Width:
+			MetricValue = ViewportSize.X;
+			break;
+		case EDPIBreakpointSizeMetric::Height:
+			MetricValue = ViewportSize.Y;
+			break;
+		default:
+			MetricValue = FMath::Min(ViewportSize.X, ViewportSize.Y);
+			break;
+		}
+		if (Rule.SizeMetric != EDPIBreakpointSizeMetric::BothDimensions)
+		{
+			if (Rule.MinShortSide > 0 && MetricValue < Rule.MinShortSide) continue;
+			if (Rule.MaxShortSide > 0 && MetricValue > Rule.MaxShortSide) continue;
+		}
 		if (Rule.MinWidth > 0 && ViewportSize.X < Rule.MinWidth) continue;
 		if (Rule.MaxWidth > 0 && ViewportSize.X > Rule.MaxWidth) continue;
 		if (Rule.MinHeight > 0 && ViewportSize.Y < Rule.MinHeight) continue;

@@ -46,6 +46,7 @@ void FDPIScalerRuleCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> 
 
 	IDetailGroup& MatchGroup = ChildBuilder.AddGroup(TEXT("Match"), FText::FromString(TEXT("Match")), true);
 	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, Orientation));
+	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, SizeMetric));
 	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinShortSide));
 	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxShortSide));
 
@@ -83,9 +84,13 @@ FText FDPIScalerRuleCustomization::GetSummary() const
 	Parts.Add(Rule.bEnabled ? Rule.Name.ToString() : FString::Printf(TEXT("%s (Disabled)"), *Rule.Name.ToString()));
 	if (Rule.Orientation == EDPIBreakpointOrientation::Portrait) Parts.Add(TEXT("Portrait"));
 	if (Rule.Orientation == EDPIBreakpointOrientation::Landscape) Parts.Add(TEXT("Landscape"));
-	if (Rule.MinShortSide > 0 && Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("Short Side %d–%d"), Rule.MinShortSide, Rule.MaxShortSide));
-	else if (Rule.MinShortSide > 0) Parts.Add(FString::Printf(TEXT("Short Side ≥ %d"), Rule.MinShortSide));
-	else if (Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("Short Side ≤ %d"), Rule.MaxShortSide));
+	const TCHAR* MetricLabel = Rule.SizeMetric == EDPIBreakpointSizeMetric::BothDimensions ? TEXT("W/H")
+		: Rule.SizeMetric == EDPIBreakpointSizeMetric::LongSide ? TEXT("Long Side")
+		: Rule.SizeMetric == EDPIBreakpointSizeMetric::Width ? TEXT("Width")
+		: Rule.SizeMetric == EDPIBreakpointSizeMetric::Height ? TEXT("Height") : TEXT("Short Side");
+	if (Rule.MinShortSide > 0 && Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("%s %d–%d"), MetricLabel, Rule.MinShortSide, Rule.MaxShortSide));
+	else if (Rule.MinShortSide > 0) Parts.Add(FString::Printf(TEXT("%s ≥ %d"), MetricLabel, Rule.MinShortSide));
+	else if (Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("%s ≤ %d"), MetricLabel, Rule.MaxShortSide));
 	if (Rule.ScaleMode == EDPIBreakpointScaleMode::Fixed) Parts.Add(FString::Printf(TEXT("Fixed %.2f"), Rule.TargetUIScale));
 	else if (Rule.ScaleMode == EDPIBreakpointScaleMode::Curve) Parts.Add(TEXT("Curve"));
 	else Parts.Add(TEXT("Project DPI"));

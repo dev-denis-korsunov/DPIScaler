@@ -22,6 +22,16 @@ enum class EDPIBreakpointScaleMode : uint8
 };
 
 UENUM(BlueprintType)
+enum class EDPIBreakpointSizeMetric : uint8
+{
+	BothDimensions UMETA(DisplayName = "Both Dimensions"),
+	ShortSide UMETA(DisplayName = "Short Side"),
+	LongSide UMETA(DisplayName = "Long Side"),
+	Width,
+	Height
+};
+
+UENUM(BlueprintType)
 enum class EDPIBreakpointCurveAxis : uint8
 {
 	ShortSide UMETA(DisplayName = "Short Side"),
@@ -40,8 +50,9 @@ struct DPISCALER_API FDPIBreakpointRule
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rule") int32 Priority;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match") EDPIBreakpointOrientation Orientation;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Minimum Short Side", meta = (ClampMin = "0")) int32 MinShortSide;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Maximum Short Side", meta = (ClampMin = "0", ToolTip = "Zero means unbounded.")) int32 MaxShortSide;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match") EDPIBreakpointSizeMetric SizeMetric;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Minimum Size", meta = (ClampMin = "0")) int32 MinShortSide;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Maximum Size", meta = (ClampMin = "0", ToolTip = "Zero means unbounded.")) int32 MaxShortSide;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Width", meta = (ClampMin = "0")) int32 MinWidth;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Maximum Width", meta = (ClampMin = "0")) int32 MaxWidth;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Height", meta = (ClampMin = "0")) int32 MinHeight;

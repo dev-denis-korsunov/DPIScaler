@@ -16,6 +16,7 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	FDPIBreakpointRule TabletRule;
 	TabletRule.Name = TEXT("Tablet");
 	TabletRule.Priority = 50;
+	TabletRule.SizeMetric = EDPIBreakpointSizeMetric::ShortSide;
 	TabletRule.MaxShortSide = 1080;
 	TabletRule.ScaleMode = EDPIBreakpointScaleMode::Fixed;
 	TabletRule.TargetUIScale = 0.95f;
@@ -23,6 +24,7 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	FDPIBreakpointRule MobileRule;
 	MobileRule.Name = TEXT("Mobile");
 	MobileRule.Priority = 100;
+	MobileRule.SizeMetric = EDPIBreakpointSizeMetric::ShortSide;
 	MobileRule.MaxShortSide = 720;
 	MobileRule.ScaleMode = EDPIBreakpointScaleMode::Fixed;
 	MobileRule.TargetUIScale = 0.8f;
@@ -47,6 +49,15 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	Scaler->DPIRules = { FirstTie, SecondTie };
 	ActiveRule = Scaler->FindActiveRule(FIntPoint(1920, 1080));
 	TestEqual(TEXT("Array order resolves equal priorities"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("First")));
+
+	FDPIBreakpointRule BoundedRule;
+	BoundedRule.Name = TEXT("Bounded");
+	BoundedRule.SizeMetric = EDPIBreakpointSizeMetric::BothDimensions;
+	BoundedRule.MaxShortSide = 500;
+	Scaler->DPIRules = { BoundedRule };
+	TestNotNull(TEXT("Both Dimensions accepts a bounded viewport"), Scaler->FindActiveRule(FIntPoint(500, 400)));
+	TestNull(TEXT("Both Dimensions rejects width outside the rectangle"), Scaler->FindActiveRule(FIntPoint(501, 400)));
+	TestNull(TEXT("Both Dimensions rejects height outside the rectangle"), Scaler->FindActiveRule(FIntPoint(400, 501)));
 	return true;
 }
 
