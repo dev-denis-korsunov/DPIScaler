@@ -173,12 +173,10 @@ namespace UE::DPIScalerEditor::Private
 		const float ProjectScale = PreviewScaler != nullptr && PreviewScaler->DesignerDpi.IsSet() ? PreviewScaler->DesignerDpi.GetValue() : 1.0f;
 		const float FinalScale = Scaler.ResolveTargetUIScale(ProjectScale, IntViewportSize, ActiveRule);
 		const FString RuleName = ActiveRule != nullptr ? ActiveRule->Name.ToString() : TEXT("Project DPI");
-		const int32 ActiveRuleIndex = ActiveRule != nullptr ? static_cast<int32>(ActiveRule - Scaler.DPIRules.GetData()) : INDEX_NONE;
-		const FLinearColor StatusColor = ActiveRuleIndex != INDEX_NONE ? GetRuleColor(ActiveRuleIndex) : FLinearColor::White;
 		const FText Status = FText::FromString(FString::Printf(TEXT("Active: %s  •  Scale %.2f"), *RuleName, FinalScale));
 		const FVector2D StatusPosition = Origin + FVector2D(70.0f, -RulerThickness - RulerGap + 2.0f);
 		const FVector2D StatusSize(FMath::Max(Size.X - 76.0f, 120.0f), 12.0f);
-		FSlateDrawElement::MakeText(DrawElements, LayerId, FPaintGeometry(StatusPosition, StatusSize, 1.0f), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, StatusColor);
+		FSlateDrawElement::MakeText(DrawElements, LayerId, FPaintGeometry(StatusPosition, StatusSize, 1.0f), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
 	class FDPIScalerDesignerExtension final : public FDesignerExtension
