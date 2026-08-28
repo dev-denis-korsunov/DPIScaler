@@ -157,6 +157,16 @@ void UDPIScalerWidget::OnDesignerChanged(const FDesignerChangedEventArgs& EventA
 
 void UDPIScalerWidget::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
+	if (PropertyChangedEvent.MemberProperty != nullptr
+		&& PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UDPIScalerWidget, DPIRules)
+		&& (PropertyChangedEvent.ChangeType & EPropertyChangeType::ArrayAdd) != 0)
+	{
+		const int32 RuleIndex = PropertyChangedEvent.GetArrayIndex(GET_MEMBER_NAME_CHECKED(UDPIScalerWidget, DPIRules).ToString());
+		if (DPIRules.IsValidIndex(RuleIndex))
+		{
+			DPIRules[RuleIndex].Name = FName(*FString::Printf(TEXT("Rule %d"), RuleIndex + 1));
+		}
+	}
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	InvalidateLayoutAndVolatility();
 }
