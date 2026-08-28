@@ -16,24 +16,24 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	FDPIBreakpointRule TabletRule;
 	TabletRule.Name = TEXT("Tablet");
 	TabletRule.Priority = 50;
-	TabletRule.SizeMetric = EDPIBreakpointSizeMetric::ShortSide;
-	TabletRule.MaxShortSide = 1080;
+	TabletRule.bUseWidthBreakpoint = true;
+	TabletRule.WidthBreakpoint = 1080;
 	TabletRule.ScaleMode = EDPIBreakpointScaleMode::Fixed;
 	TabletRule.TargetUIScale = 0.95f;
 
 	FDPIBreakpointRule MobileRule;
 	MobileRule.Name = TEXT("Mobile");
 	MobileRule.Priority = 100;
-	MobileRule.SizeMetric = EDPIBreakpointSizeMetric::ShortSide;
-	MobileRule.MaxShortSide = 720;
+	MobileRule.bUseWidthBreakpoint = true;
+	MobileRule.WidthBreakpoint = 720;
 	MobileRule.ScaleMode = EDPIBreakpointScaleMode::Fixed;
 	MobileRule.TargetUIScale = 0.8f;
 
 	Scaler->DPIRules = { DefaultRule, TabletRule, MobileRule };
 	const FDPIBreakpointRule* ActiveRule = Scaler->FindActiveRule(FIntPoint(600, 1000));
 	TestEqual(TEXT("Highest-priority matching rule wins"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Mobile")));
-	ActiveRule = Scaler->FindActiveRule(FIntPoint(1280, 800));
-	TestEqual(TEXT("Short-side range selects tablet"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Tablet")));
+	ActiveRule = Scaler->FindActiveRule(FIntPoint(900, 1280));
+	TestEqual(TEXT("Width breakpoint selects tablet"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Tablet")));
 	ActiveRule = Scaler->FindActiveRule(FIntPoint(2560, 1440));
 	TestEqual(TEXT("Any rule provides a default"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Default")));
 
@@ -52,12 +52,34 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 
 	FDPIBreakpointRule BoundedRule;
 	BoundedRule.Name = TEXT("Bounded");
-	BoundedRule.SizeMetric = EDPIBreakpointSizeMetric::BothDimensions;
-	BoundedRule.MaxShortSide = 500;
+	BoundedRule.bUseWidthBreakpoint = true;
+	BoundedRule.WidthBreakpoint = 500;
+	BoundedRule.bUseHeightBreakpoint = true;
+	BoundedRule.HeightBreakpoint = 500;
 	Scaler->DPIRules = { BoundedRule };
-	TestNotNull(TEXT("Both Dimensions accepts a bounded viewport"), Scaler->FindActiveRule(FIntPoint(500, 400)));
-	TestNull(TEXT("Both Dimensions rejects width outside the rectangle"), Scaler->FindActiveRule(FIntPoint(501, 400)));
-	TestNull(TEXT("Both Dimensions rejects height outside the rectangle"), Scaler->FindActiveRule(FIntPoint(400, 501)));
+	TestNotNull(TEXT("Two Min breakpoints accept a bounded viewport"), Scaler->FindActiveRule(FIntPoint(500, 400)));
+	TestNull(TEXT("Two Min breakpoints reject width outside the rectangle"), Scaler->FindActiveRule(FIntPoint(501, 400)));
+	TestNull(TEXT("Two Min breakpoints reject height outside the rectangle"), Scaler->FindActiveRule(FIntPoint(400, 501)));
+
+	BoundedRule.bUseHeightBreakpoint = false;
+	Scaler->DPIRules = { BoundedRule };
+	TestNotNull(TEXT("Missing height breakpoint accepts every height"), Scaler->FindActiveRule(FIntPoint(500, 4000)));
+	TestNull(TEXT("Width-only rule still rejects width outside its range"), Scaler->FindActiveRule(FIntPoint(501, 4000)));
+
+	BoundedRule.bUseWidthBreakpoint = false;
+	BoundedRule.bUseHeightBreakpoint = true;
+	BoundedRule.HeightBreakpoint = 500;
+	Scaler->DPIRules = { BoundedRule };
+	TestNotNull(TEXT("Missing width breakpoint accepts every width"), Scaler->FindActiveRule(FIntPoint(4000, 500)));
+	TestNull(TEXT("Height-only rule still rejects height outside its range"), Scaler->FindActiveRule(FIntPoint(4000, 501)));
+
+	BoundedRule.bUseWidthBreakpoint = true;
+	BoundedRule.WidthBreakpoint = 500;
+	BoundedRule.bUseHeightBreakpoint = false;
+	BoundedRule.BreakpointRule = EDPIBreakpointRuleDirection::Max;
+	Scaler->DPIRules = { BoundedRule };
+	TestNotNull(TEXT("Max rule accepts values from the breakpoint"), Scaler->FindActiveRule(FIntPoint(500, 100)));
+	TestNull(TEXT("Max rule rejects values below the breakpoint"), Scaler->FindActiveRule(FIntPoint(499, 100)));
 	return true;
 }
 

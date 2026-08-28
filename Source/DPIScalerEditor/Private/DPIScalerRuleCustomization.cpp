@@ -46,15 +46,11 @@ void FDPIScalerRuleCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> 
 
 	IDetailGroup& MatchGroup = ChildBuilder.AddGroup(TEXT("Match"), FText::FromString(TEXT("Match")), true);
 	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, Orientation));
-	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, SizeMetric));
-	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinShortSide));
-	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxShortSide));
+	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, BreakpointRule));
+	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, WidthBreakpoint));
+	AddProperty(MatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, HeightBreakpoint));
 
 	IDetailGroup& AdvancedMatchGroup = ChildBuilder.AddGroup(TEXT("AdvancedMatch"), FText::FromString(TEXT("Advanced Match")));
-	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinWidth));
-	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxWidth));
-	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinHeight));
-	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxHeight));
 	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinAspectRatio));
 	AddProperty(AdvancedMatchGroup, GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxAspectRatio));
 
@@ -84,13 +80,10 @@ FText FDPIScalerRuleCustomization::GetSummary() const
 	Parts.Add(Rule.bEnabled ? Rule.Name.ToString() : FString::Printf(TEXT("%s (Disabled)"), *Rule.Name.ToString()));
 	if (Rule.Orientation == EDPIBreakpointOrientation::Portrait) Parts.Add(TEXT("Portrait"));
 	if (Rule.Orientation == EDPIBreakpointOrientation::Landscape) Parts.Add(TEXT("Landscape"));
-	const TCHAR* MetricLabel = Rule.SizeMetric == EDPIBreakpointSizeMetric::BothDimensions ? TEXT("W/H")
-		: Rule.SizeMetric == EDPIBreakpointSizeMetric::LongSide ? TEXT("Long Side")
-		: Rule.SizeMetric == EDPIBreakpointSizeMetric::Width ? TEXT("Width")
-		: Rule.SizeMetric == EDPIBreakpointSizeMetric::Height ? TEXT("Height") : TEXT("Short Side");
-	if (Rule.MinShortSide > 0 && Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("%s %d–%d"), MetricLabel, Rule.MinShortSide, Rule.MaxShortSide));
-	else if (Rule.MinShortSide > 0) Parts.Add(FString::Printf(TEXT("%s ≥ %d"), MetricLabel, Rule.MinShortSide));
-	else if (Rule.MaxShortSide > 0) Parts.Add(FString::Printf(TEXT("%s ≤ %d"), MetricLabel, Rule.MaxShortSide));
+	const TCHAR* Operator = Rule.BreakpointRule == EDPIBreakpointRuleDirection::Min ? TEXT("≤") : TEXT("≥");
+	if (Rule.bUseWidthBreakpoint) Parts.Add(FString::Printf(TEXT("W %s %d"), Operator, Rule.WidthBreakpoint));
+	if (Rule.bUseHeightBreakpoint) Parts.Add(FString::Printf(TEXT("H %s %d"), Operator, Rule.HeightBreakpoint));
+	if (!Rule.bUseWidthBreakpoint && !Rule.bUseHeightBreakpoint && Rule.Orientation == EDPIBreakpointOrientation::Any) Parts.Add(TEXT("Any"));
 	if (Rule.ScaleMode == EDPIBreakpointScaleMode::Fixed) Parts.Add(FString::Printf(TEXT("Fixed %.2f"), Rule.TargetUIScale));
 	else if (Rule.ScaleMode == EDPIBreakpointScaleMode::Curve) Parts.Add(TEXT("Curve"));
 	else Parts.Add(TEXT("Project DPI"));

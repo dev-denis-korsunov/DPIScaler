@@ -22,13 +22,10 @@ enum class EDPIBreakpointScaleMode : uint8
 };
 
 UENUM(BlueprintType)
-enum class EDPIBreakpointSizeMetric : uint8
+enum class EDPIBreakpointRuleDirection : uint8
 {
-	BothDimensions UMETA(DisplayName = "Both Dimensions"),
-	ShortSide UMETA(DisplayName = "Short Side"),
-	LongSide UMETA(DisplayName = "Long Side"),
-	Width,
-	Height
+	Min UMETA(DisplayName = "Min (0 to Breakpoint)"),
+	Max UMETA(DisplayName = "Max (Breakpoint and Above)")
 };
 
 UENUM(BlueprintType)
@@ -50,13 +47,11 @@ struct DPISCALER_API FDPIBreakpointRule
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rule") int32 Priority;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match") EDPIBreakpointOrientation Orientation;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match") EDPIBreakpointSizeMetric SizeMetric;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Minimum Size", meta = (ClampMin = "0")) int32 MinShortSide;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Maximum Size", meta = (ClampMin = "0", ToolTip = "Zero means unbounded.")) int32 MaxShortSide;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Width", meta = (ClampMin = "0")) int32 MinWidth;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Maximum Width", meta = (ClampMin = "0")) int32 MaxWidth;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Height", meta = (ClampMin = "0")) int32 MinHeight;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Maximum Height", meta = (ClampMin = "0")) int32 MaxHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Breakpoint Rule") EDPIBreakpointRuleDirection BreakpointRule;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseWidthBreakpoint;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (EditCondition = "bUseWidthBreakpoint", ClampMin = "0")) int32 WidthBreakpoint;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseHeightBreakpoint;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (EditCondition = "bUseHeightBreakpoint", ClampMin = "0")) int32 HeightBreakpoint;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Aspect Ratio", meta = (ClampMin = "0.0")) float MinAspectRatio;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Maximum Aspect Ratio", meta = (ClampMin = "0.0")) float MaxAspectRatio;
 

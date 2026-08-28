@@ -6,8 +6,8 @@
 #include "Widgets/Layout/SDPIScaler.h"
 
 FDPIBreakpointRule::FDPIBreakpointRule()
-	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any), SizeMetric(EDPIBreakpointSizeMetric::BothDimensions)
-	, MinShortSide(0), MaxShortSide(0), MinWidth(0), MaxWidth(0), MinHeight(0), MaxHeight(0)
+	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any), BreakpointRule(EDPIBreakpointRuleDirection::Min)
+	, bUseWidthBreakpoint(false), WidthBreakpoint(0), bUseHeightBreakpoint(false), HeightBreakpoint(0)
 	, MinAspectRatio(0.0f), MaxAspectRatio(0.0f), ScaleMode(EDPIBreakpointScaleMode::UseProjectDPI)
 	, TargetUIScale(1.0f), CurveAxis(EDPIBreakpointCurveAxis::ShortSide), MinScale(0.0f), MaxScale(0.0f), SnapStep(0.0f)
 {
@@ -87,35 +87,9 @@ const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& View
 		if (!Rule.bEnabled || (ActiveRule != nullptr && Rule.Priority <= ActiveRule->Priority)) continue;
 		if (Rule.Orientation == EDPIBreakpointOrientation::Portrait && ViewportSize.X >= ViewportSize.Y) continue;
 		if (Rule.Orientation == EDPIBreakpointOrientation::Landscape && ViewportSize.X < ViewportSize.Y) continue;
-		int32 MetricValue = 0;
-		switch (Rule.SizeMetric)
-		{
-		case EDPIBreakpointSizeMetric::BothDimensions:
-			if (Rule.MinShortSide > 0 && (ViewportSize.X < Rule.MinShortSide || ViewportSize.Y < Rule.MinShortSide)) continue;
-			if (Rule.MaxShortSide > 0 && (ViewportSize.X > Rule.MaxShortSide || ViewportSize.Y > Rule.MaxShortSide)) continue;
-			break;
-		case EDPIBreakpointSizeMetric::LongSide:
-			MetricValue = FMath::Max(ViewportSize.X, ViewportSize.Y);
-			break;
-		case EDPIBreakpointSizeMetric::Width:
-			MetricValue = ViewportSize.X;
-			break;
-		case EDPIBreakpointSizeMetric::Height:
-			MetricValue = ViewportSize.Y;
-			break;
-		default:
-			MetricValue = FMath::Min(ViewportSize.X, ViewportSize.Y);
-			break;
-		}
-		if (Rule.SizeMetric != EDPIBreakpointSizeMetric::BothDimensions)
-		{
-			if (Rule.MinShortSide > 0 && MetricValue < Rule.MinShortSide) continue;
-			if (Rule.MaxShortSide > 0 && MetricValue > Rule.MaxShortSide) continue;
-		}
-		if (Rule.MinWidth > 0 && ViewportSize.X < Rule.MinWidth) continue;
-		if (Rule.MaxWidth > 0 && ViewportSize.X > Rule.MaxWidth) continue;
-		if (Rule.MinHeight > 0 && ViewportSize.Y < Rule.MinHeight) continue;
-		if (Rule.MaxHeight > 0 && ViewportSize.Y > Rule.MaxHeight) continue;
+		const bool bMinimumRule = Rule.BreakpointRule == EDPIBreakpointRuleDirection::Min;
+		if (Rule.bUseWidthBreakpoint && (bMinimumRule ? ViewportSize.X > Rule.WidthBreakpoint : ViewportSize.X < Rule.WidthBreakpoint)) continue;
+		if (Rule.bUseHeightBreakpoint && (bMinimumRule ? ViewportSize.Y > Rule.HeightBreakpoint : ViewportSize.Y < Rule.HeightBreakpoint)) continue;
 		if (Rule.MinAspectRatio > 0.0f && AspectRatio < Rule.MinAspectRatio) continue;
 		if (Rule.MaxAspectRatio > 0.0f && AspectRatio > Rule.MaxAspectRatio) continue;
 		ActiveRule = &Rule;
