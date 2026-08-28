@@ -1,13 +1,11 @@
 #include "Modules/ModuleManager.h"
 
 #include "DPIScalerWidget.h"
-#include "DPIScalerRuleCustomization.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "DesignerExtension.h"
 #include "IUMGDesigner.h"
 #include "IHasDesignerExtensibility.h"
 #include "Rendering/DrawElements.h"
-#include "PropertyEditorModule.h"
 #include "Styling/CoreStyle.h"
 #include "UMGEditorModule.h"
 #include "WidgetReference.h"
@@ -168,8 +166,9 @@ namespace UE::DPIScalerEditor::Private
 		const int32 ActiveRuleIndex = Scaler.DPIRules.IndexOfByPredicate([ActiveRule](const FDPIBreakpointRule& Rule) { return &Rule == ActiveRule; });
 		const FLinearColor ActiveRuleColor = ActiveRuleIndex != INDEX_NONE ? GetRuleColor(ActiveRuleIndex, 0.60f, 0.70f) : FLinearColor(0.55f, 0.55f, 0.55f);
 		static const FSlateRoundedBoxBrush ActiveRuleIndicatorBrush(FLinearColor::White, 3.0f);
-		const FVector2D IndicatorPosition = StatusPosition + FVector2D(-10.0f, 3.0f);
-		FSlateDrawElement::MakeBox(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(FVector2D(6.0f, 6.0f), FSlateLayoutTransform(IndicatorPosition)), &ActiveRuleIndicatorBrush, ESlateDrawEffect::None, ActiveRuleColor);
+		const FVector2D IndicatorSize(30.0f, 6.0f);
+		const FVector2D IndicatorPosition = StatusPosition + FVector2D(-34.0f, 3.0f);
+		FSlateDrawElement::MakeBox(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(IndicatorSize, FSlateLayoutTransform(IndicatorPosition)), &ActiveRuleIndicatorBrush, ESlateDrawEffect::None, ActiveRuleColor);
 		FSlateDrawElement::MakeText(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(StatusSize, FSlateLayoutTransform(StatusPosition)), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
@@ -225,9 +224,6 @@ class FDPIScalerEditorModule final : public IModuleInterface
 	{
 		ExtensionFactory = MakeShared<UE::DPIScalerEditor::Private::FDPIScalerDesignerExtensionFactory>();
 		FModuleManager::LoadModuleChecked<IUMGEditorModule>("UMGEditor").GetDesignerExtensibilityManager()->AddDesignerExtensionFactory(ExtensionFactory.ToSharedRef());
-		FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-		PropertyEditor.RegisterCustomPropertyTypeLayout(FDPIBreakpointRule::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FDPIScalerRuleCustomization::MakeInstance));
-		PropertyEditor.NotifyCustomizationModuleChanged();
 	}
 
 	virtual void ShutdownModule() override
@@ -240,11 +236,6 @@ class FDPIScalerEditorModule final : public IModuleInterface
 			}
 		}
 		ExtensionFactory.Reset();
-		if (FPropertyEditorModule* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
-		{
-			PropertyEditor->UnregisterCustomPropertyTypeLayout(FDPIBreakpointRule::StaticStruct()->GetFName());
-			PropertyEditor->NotifyCustomizationModuleChanged();
-		}
 	}
 
 	TSharedPtr<IDesignerExtensionFactory> ExtensionFactory;

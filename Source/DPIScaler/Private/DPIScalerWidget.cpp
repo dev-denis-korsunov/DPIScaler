@@ -6,16 +6,17 @@
 #include "Widgets/Layout/SDPIScaler.h"
 
 FDPIBreakpointRule::FDPIBreakpointRule()
-	: Name(TEXT("Default")), bUseWidthBreakpoint(false), WidthBreakpoint(0), bUseHeightBreakpoint(false), HeightBreakpoint(0)
-	, bUseMinAspectRatio(false), MinAspectRatio(0.75f), bUseMaxAspectRatio(false), MaxAspectRatio(1.78f), ScaleMode(EDPIBreakpointScaleMode::Curve)
-	, TargetUIScale(1.0f), bUseMinClamp(false), MinClamp(0.75f), bUseMaxClamp(false), MaxClamp(1.25f), ScaleAxis(EDPIBreakpointScaleAxis::ScreenWidth)
+	: Name(TEXT("Default")), WidthBreakpoint(0), HeightBreakpoint(0), MinAspectRatio(0.75f), MaxAspectRatio(1.78f)
+	, ScaleMode(EDPIBreakpointScaleMode::Curve), TargetUIScale(1.0f), ScaleAxis(EDPIBreakpointScaleAxis::ScreenWidth)
+	, bUseWidthBreakpoint(false), bUseHeightBreakpoint(false), bUseMinAspectRatio(false), bUseMaxAspectRatio(false)
 {
 	FRichCurve* Curve = ScaleCurve.GetRichCurve();
 	Curve->SetKeyInterpMode(Curve->AddKey(0.0f, 0.0f), RCIM_Linear);
 	Curve->SetKeyInterpMode(Curve->AddKey(1920.0f, 1.0f), RCIM_Linear);
 }
 
-UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	bIsVariable = false;
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
@@ -24,19 +25,29 @@ UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer) 
 float UDPIScalerWidget::GetDPIScale() const
 {
 #if WITH_EDITORONLY_DATA
-	if (IsDesignTime() && (bDesignerMute || !bScreenPreview)) return 1.0f;
+	if (IsDesignTime() && (bDesignerMute || !bScreenPreview))
+	{
+		return 1.0f;
+	}
 #endif
 	float ApplicationScale = 1.0f;
 	FIntPoint ViewportSize = FIntPoint::ZeroValue;
 #if WITH_EDITOR
-	if (DesignerDpi.IsSet() && DesignerSize.IsSet()) { ApplicationScale = DesignerDpi.GetValue(); ViewportSize = DesignerSize.GetValue().IntPoint(); }
+	if (DesignerDpi.IsSet() && DesignerSize.IsSet())
+	{
+		ApplicationScale = DesignerDpi.GetValue();
+		ViewportSize = DesignerSize.GetValue().IntPoint();
+	}
 	else
 #endif
 	{
 		ApplicationScale = UWidgetLayoutLibrary::GetViewportScale(GetWorld());
 		ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld()).IntPoint();
 	}
-	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return 1.0f;
+	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0)
+	{
+		return 1.0f;
+	}
 
 	const UDPIScalerWidget* ParentScaler = FindParentDPIScaler();
 	const float SourceScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
@@ -58,15 +69,28 @@ const UDPIScalerWidget* UDPIScalerWidget::FindParentDPIScaler() const
 	{
 		if (IsValid(ParentWidget))
 		{
-			if (ParentWidget->IsA<UDPIScalerWidget>()) { ParentScaler = Cast<UDPIScalerWidget>(ParentWidget); break; }
+			if (ParentWidget->IsA<UDPIScalerWidget>())
+			{
+				ParentScaler = Cast<UDPIScalerWidget>(ParentWidget);
+				break;
+			}
 			ParentWidget = ParentWidget->GetParent();
 			continue;
 		}
-		if (!IsValid(OuterWidgetTree)) break;
+		if (!IsValid(OuterWidgetTree))
+		{
+			break;
+		}
 		const UWidget* WidgetTreeOuter = Cast<UWidget>(OuterWidgetTree->GetOuter());
-		if (!IsValid(WidgetTreeOuter)) break;
+		if (!IsValid(WidgetTreeOuter))
+		{
+			break;
+		}
 		ParentWidget = WidgetTreeOuter->GetParent();
-		if (!IsValid(ParentWidget)) break;
+		if (!IsValid(ParentWidget))
+		{
+			break;
+		}
 		OuterWidgetTree = Cast<UWidgetTree>(ParentWidget->GetOuter());
 	}
 	return ParentScaler;
@@ -79,14 +103,29 @@ float UDPIScalerWidget::GetAbsoluteDesiredDPIScale(float ApplicationScale, const
 
 const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& ViewportSize) const
 {
-	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return nullptr;
+	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0)
+	{
+		return nullptr;
+	}
 	const float AspectRatio = static_cast<float>(ViewportSize.X) / static_cast<float>(ViewportSize.Y);
 	for (const FDPIBreakpointRule& Rule : DPIRules)
 	{
-		if (Rule.bUseWidthBreakpoint && ViewportSize.X > Rule.WidthBreakpoint) continue;
-		if (Rule.bUseHeightBreakpoint && ViewportSize.Y > Rule.HeightBreakpoint) continue;
-		if (Rule.bUseMinAspectRatio && AspectRatio < Rule.MinAspectRatio) continue;
-		if (Rule.bUseMaxAspectRatio && AspectRatio > Rule.MaxAspectRatio) continue;
+		if (Rule.bUseWidthBreakpoint && ViewportSize.X > Rule.WidthBreakpoint)
+		{
+			continue;
+		}
+		if (Rule.bUseHeightBreakpoint && ViewportSize.Y > Rule.HeightBreakpoint)
+		{
+			continue;
+		}
+		if (Rule.bUseMinAspectRatio && AspectRatio < Rule.MinAspectRatio)
+		{
+			continue;
+		}
+		if (Rule.bUseMaxAspectRatio && AspectRatio > Rule.MaxAspectRatio)
+		{
+			continue;
+		}
 		return &Rule;
 	}
 	return nullptr;
@@ -95,32 +134,39 @@ const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& View
 float UDPIScalerWidget::ResolveTargetUIScale(float ProjectDPIScale, const FIntPoint& ViewportSize, const FDPIBreakpointRule* Rule) const
 {
 	float Result = FMath::IsFinite(ProjectDPIScale) && ProjectDPIScale > 0.0f ? ProjectDPIScale : 1.0f;
-	if (Rule == nullptr) return Result;
+	if (Rule == nullptr)
+	{
+		return Result;
+	}
 
 	if (Rule->ScaleMode == EDPIBreakpointScaleMode::Fixed)
 	{
 		Result = Rule->TargetUIScale;
-	}
-	else if (Rule->ScaleMode == EDPIBreakpointScaleMode::Clamp)
-	{
-		const float LowerLimit = Rule->bUseMinClamp ? FMath::Max(Rule->MinClamp, UE_SMALL_NUMBER) : UE_SMALL_NUMBER;
-		const float UpperLimit = Rule->bUseMaxClamp ? FMath::Max(Rule->MaxClamp, LowerLimit) : BIG_NUMBER;
-		Result = FMath::Clamp(Result, LowerLimit, UpperLimit);
 	}
 	else if (Rule->ScaleMode == EDPIBreakpointScaleMode::Curve)
 	{
 		float AxisValue = FMath::Min(ViewportSize.X, ViewportSize.Y);
 		switch (Rule->ScaleAxis)
 		{
-		case EDPIBreakpointScaleAxis::LongSide: AxisValue = FMath::Max(ViewportSize.X, ViewportSize.Y); break;
-		case EDPIBreakpointScaleAxis::ScreenWidth: AxisValue = ViewportSize.X; break;
-		case EDPIBreakpointScaleAxis::ScreenHeight: AxisValue = ViewportSize.Y; break;
-		default: break;
+		case EDPIBreakpointScaleAxis::LongSide:
+			AxisValue = FMath::Max(ViewportSize.X, ViewportSize.Y);
+			break;
+		case EDPIBreakpointScaleAxis::ScreenWidth:
+			AxisValue = ViewportSize.X;
+			break;
+		case EDPIBreakpointScaleAxis::ScreenHeight:
+			AxisValue = ViewportSize.Y;
+			break;
+		default:
+			break;
 		}
 		Result = Rule->ScaleCurve.GetRichCurveConst()->Eval(AxisValue, 1.0f);
 	}
 
-	if (!FMath::IsFinite(Result)) Result = 1.0f;
+	if (!FMath::IsFinite(Result))
+	{
+		Result = 1.0f;
+	}
 	return FMath::Max(Result, UE_SMALL_NUMBER);
 }
 
@@ -139,12 +185,34 @@ void UDPIScalerWidget::SynchronizeProperties()
 TSharedRef<SWidget> UDPIScalerWidget::RebuildWidget()
 {
 	SAssignNew(DPIScaler, SDPIScaler).DPIScale_UObject(this, &UDPIScalerWidget::GetDPIScale);
-	if (GetChildrenCount() > 0) DPIScaler->SetContent(GetContentSlot()->Content ? GetContentSlot()->Content->TakeWidget() : SNullWidget::NullWidget);
+	if (GetChildrenCount() > 0)
+	{
+		DPIScaler->SetContent(GetContentSlot()->Content ? GetContentSlot()->Content->TakeWidget() : SNullWidget::NullWidget);
+	}
 	return DPIScaler.ToSharedRef();
 }
-void UDPIScalerWidget::OnSlotAdded(UPanelSlot* InSlot) { if (DPIScaler.IsValid()) DPIScaler->SetContent(InSlot->Content ? InSlot->Content->TakeWidget() : SNullWidget::NullWidget); }
-void UDPIScalerWidget::OnSlotRemoved(UPanelSlot* InSlot) { if (DPIScaler.IsValid()) DPIScaler->SetContent(SNullWidget::NullWidget); }
-void UDPIScalerWidget::ReleaseSlateResources(bool bReleaseChildren) { Super::ReleaseSlateResources(bReleaseChildren); DPIScaler.Reset(); }
+
+void UDPIScalerWidget::OnSlotAdded(UPanelSlot* InSlot)
+{
+	if (DPIScaler.IsValid())
+	{
+		DPIScaler->SetContent(InSlot->Content ? InSlot->Content->TakeWidget() : SNullWidget::NullWidget);
+	}
+}
+
+void UDPIScalerWidget::OnSlotRemoved(UPanelSlot* InSlot)
+{
+	if (DPIScaler.IsValid())
+	{
+		DPIScaler->SetContent(SNullWidget::NullWidget);
+	}
+}
+
+void UDPIScalerWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	Super::ReleaseSlateResources(bReleaseChildren);
+	DPIScaler.Reset();
+}
 #if WITH_EDITOR
 void UDPIScalerWidget::OnDesignerChanged(const FDesignerChangedEventArgs& EventArgs)
 {

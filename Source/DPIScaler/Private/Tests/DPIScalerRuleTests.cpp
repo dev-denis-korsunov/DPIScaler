@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "DPIScalerWidget.h"
+#include "HAL/PlatformTime.h"
 #include "Misc/AutomationTest.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDPIScalerRuleSelectionTest, "DPIScaler.Rules.Selection", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -64,6 +65,42 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDPIScalerRuleMatchConditionsTest, "DPIScaler.Rules.MatchConditions", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDPIScalerRuleMatchConditionsTest::RunTest(const FString& Parameters)
+{
+	UDPIScalerWidget* Scaler = NewObject<UDPIScalerWidget>();
+
+	FDPIBreakpointRule AspectRule;
+	AspectRule.Name = TEXT("FourThree");
+	AspectRule.bUseMinAspectRatio = true;
+	AspectRule.MinAspectRatio = 1.2f;
+	AspectRule.bUseMaxAspectRatio = true;
+	AspectRule.MaxAspectRatio = 1.5f;
+	Scaler->DPIRules = { AspectRule };
+
+	TestNotNull(TEXT("Aspect ratio includes its lower boundary"), Scaler->FindActiveRule(FIntPoint(1200, 1000)));
+	TestNotNull(TEXT("Aspect ratio includes its upper boundary"), Scaler->FindActiveRule(FIntPoint(1500, 1000)));
+	TestNull(TEXT("Aspect ratio rejects a viewport below its range"), Scaler->FindActiveRule(FIntPoint(1199, 1000)));
+	TestNull(TEXT("Aspect ratio rejects a viewport above its range"), Scaler->FindActiveRule(FIntPoint(1501, 1000)));
+
+	AspectRule.bUseMinAspectRatio = false;
+	Scaler->DPIRules = { AspectRule };
+	TestNotNull(TEXT("Maximum aspect ratio works without a minimum"), Scaler->FindActiveRule(FIntPoint(1000, 1000)));
+
+	AspectRule.bUseMinAspectRatio = true;
+	AspectRule.MinAspectRatio = 1.2f;
+	AspectRule.bUseMaxAspectRatio = false;
+	Scaler->DPIRules = { AspectRule };
+	TestNotNull(TEXT("Minimum aspect ratio works without a maximum"), Scaler->FindActiveRule(FIntPoint(2000, 1000)));
+
+	Scaler->DPIRules.Reset();
+	TestNull(TEXT("Empty rule list has no active rule"), Scaler->FindActiveRule(FIntPoint(1920, 1080)));
+	TestNull(TEXT("Zero width viewport has no active rule"), Scaler->FindActiveRule(FIntPoint::ZeroValue));
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDPIScalerRuleScaleTest, "DPIScaler.Rules.Scale", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FDPIScalerRuleScaleTest::RunTest(const FString& Parameters)
@@ -79,14 +116,6 @@ bool FDPIScalerRuleScaleTest::RunTest(const FString& Parameters)
 	Scale = Scaler->ResolveTargetUIScale(1.25f, FIntPoint(1280, 720), &Rule);
 	TestTrue(TEXT("Project DPI is used directly"), FMath::IsNearlyEqual(Scale, 1.25f));
 
-	Rule.ScaleMode = EDPIBreakpointScaleMode::Clamp;
-	Rule.bUseMinClamp = true;
-	Rule.MinClamp = 0.75f;
-	Rule.bUseMaxClamp = true;
-	Rule.MaxClamp = 1.1f;
-	Scale = Scaler->ResolveTargetUIScale(1.25f, FIntPoint(1280, 720), &Rule);
-	TestTrue(TEXT("Clamp limits project DPI"), FMath::IsNearlyEqual(Scale, 1.1f));
-
 	Rule.ScaleMode = EDPIBreakpointScaleMode::Curve;
 	Rule.ScaleAxis = EDPIBreakpointScaleAxis::ScreenWidth;
 	Rule.ScaleCurve.GetRichCurve()->Reset();
@@ -97,6 +126,67 @@ bool FDPIScalerRuleScaleTest::RunTest(const FString& Parameters)
 
 	Scale = Scaler->ResolveTargetUIScale(1.25f, FIntPoint(1000, 500), nullptr);
 	TestTrue(TEXT("No active rule falls back to project DPI"), FMath::IsNearlyEqual(Scale, 1.25f));
+
+	Rule.ScaleMode = EDPIBreakpointScaleMode::Curve;
+	Rule.ScaleCurve.GetRichCurve()->Reset();
+	Rule.ScaleCurve.GetRichCurve()->AddKey(0.0f, 0.0f);
+	Rule.ScaleCurve.GetRichCurve()->AddKey(2000.0f, 2.0f);
+	Rule.ScaleAxis = EDPIBreakpointScaleAxis::ShortSide;
+	Scale = Scaler->ResolveTargetUIScale(1.0f, FIntPoint(1600, 900), &Rule);
+	TestTrue(TEXT("Curve short-side axis is evaluated"), FMath::IsNearlyEqual(Scale, 0.9f));
+
+	Rule.ScaleAxis = EDPIBreakpointScaleAxis::LongSide;
+	Scale = Scaler->ResolveTargetUIScale(1.0f, FIntPoint(1600, 900), &Rule);
+	TestTrue(TEXT("Curve long-side axis is evaluated"), FMath::IsNearlyEqual(Scale, 1.6f));
+
+	Rule.ScaleAxis = EDPIBreakpointScaleAxis::ScreenHeight;
+	Scale = Scaler->ResolveTargetUIScale(1.0f, FIntPoint(1600, 900), &Rule);
+	TestTrue(TEXT("Curve screen-height axis is evaluated"), FMath::IsNearlyEqual(Scale, 0.9f));
+
+	Rule.ScaleMode = EDPIBreakpointScaleMode::Fixed;
+	Rule.TargetUIScale = -1.0f;
+	Scale = Scaler->ResolveTargetUIScale(1.0f, FIntPoint(1280, 720), &Rule);
+	TestTrue(TEXT("Invalid fixed scale is forced positive"), Scale > 0.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDPIScalerRuleSearchPerformanceTest, "DPIScaler.Performance.RuleSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::PerfFilter)
+
+bool FDPIScalerRuleSearchPerformanceTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 RuleCount = 64;
+	constexpr int32 IterationCount = 100000;
+	UDPIScalerWidget* Scaler = NewObject<UDPIScalerWidget>();
+	Scaler->DPIRules.Reserve(RuleCount + 1);
+
+	for (int32 Index = 0; Index < RuleCount; ++Index)
+	{
+		FDPIBreakpointRule Rule;
+		Rule.bUseWidthBreakpoint = true;
+		Rule.WidthBreakpoint = 100 + Index;
+		Scaler->DPIRules.Add(Rule);
+	}
+
+	FDPIBreakpointRule FallbackRule;
+	FallbackRule.Name = TEXT("Fallback");
+	Scaler->DPIRules.Add(FallbackRule);
+
+	volatile int32 MatchCount = 0;
+	const double StartTime = FPlatformTime::Seconds();
+	for (int32 Index = 0; Index < IterationCount; ++Index)
+	{
+		if (Scaler->FindActiveRule(FIntPoint(3840, 2160)) != nullptr)
+		{
+			++MatchCount;
+		}
+	}
+	const double ElapsedSeconds = FPlatformTime::Seconds() - StartTime;
+	const double MicrosecondsPerPass = ElapsedSeconds * 1000000.0 / IterationCount;
+	AddInfo(FString::Printf(TEXT("DPI rule search: %.3f us per pass (%d rules, %d passes, worst-case fallback)"), MicrosecondsPerPass, RuleCount + 1, IterationCount));
+	TestEqual(TEXT("Every benchmark pass reaches its fallback rule"), static_cast<int32>(MatchCount), IterationCount);
+	TestTrue(TEXT("Worst-case rule search stays within the 1-second test budget"), ElapsedSeconds < 1.0);
+
 	return true;
 }
 

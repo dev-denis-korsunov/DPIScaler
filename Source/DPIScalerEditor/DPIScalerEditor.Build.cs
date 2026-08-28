@@ -9,7 +9,7 @@ public class DPIScalerEditor : ModuleRules
 		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "..", "DPIScaler", "Private"));
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
-			"Core", "CoreUObject", "Engine", "DPIScaler", "PropertyEditor", "Slate", "SlateCore", "UMG", "UMGEditor", "UnrealEd"
+			"Core", "CoreUObject", "Engine", "DPIScaler", "Slate", "SlateCore", "UMG", "UMGEditor", "UnrealEd"
 		});
 	}
 }
