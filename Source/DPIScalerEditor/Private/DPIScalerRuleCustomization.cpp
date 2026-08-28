@@ -39,21 +39,16 @@ void FDPIScalerRuleCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> 
 	};
 
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, Name));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, bEnabled));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, Priority));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, Orientation));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, BreakpointRule));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, WidthBreakpoint));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, HeightBreakpoint));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinAspectRatio));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxAspectRatio));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, ScaleMode));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, TargetUIScale));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, CurveAxis));
+	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinClamp));
+	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxClamp));
+	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, ScaleAxis));
 	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, ScaleCurve));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MinScale));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, MaxScale));
-	AddProperty(GET_MEMBER_NAME_CHECKED(FDPIBreakpointRule, SnapStep));
 }
 
 FText FDPIScalerRuleCustomization::GetSummary() const
@@ -67,16 +62,20 @@ FText FDPIScalerRuleCustomization::GetSummary() const
 
 	const FDPIBreakpointRule& Rule = *static_cast<const FDPIBreakpointRule*>(ValueData);
 	TArray<FString> Parts;
-	Parts.Add(Rule.bEnabled ? Rule.Name.ToString() : FString::Printf(TEXT("%s (Disabled)"), *Rule.Name.ToString()));
-	if (Rule.Orientation == EDPIBreakpointOrientation::Portrait) Parts.Add(TEXT("Portrait"));
-	if (Rule.Orientation == EDPIBreakpointOrientation::Landscape) Parts.Add(TEXT("Landscape"));
-	const TCHAR* Operator = Rule.BreakpointRule == EDPIBreakpointRuleDirection::Min ? TEXT("≤") : TEXT("≥");
+	Parts.Add(Rule.Name.ToString());
+	const TCHAR* Operator = TEXT("≤");
 	if (Rule.bUseWidthBreakpoint) Parts.Add(FString::Printf(TEXT("W %s %d"), Operator, Rule.WidthBreakpoint));
 	if (Rule.bUseHeightBreakpoint) Parts.Add(FString::Printf(TEXT("H %s %d"), Operator, Rule.HeightBreakpoint));
-	if (!Rule.bUseWidthBreakpoint && !Rule.bUseHeightBreakpoint && Rule.Orientation == EDPIBreakpointOrientation::Any) Parts.Add(TEXT("Any"));
+	if (!Rule.bUseWidthBreakpoint && !Rule.bUseHeightBreakpoint && !Rule.bUseMinAspectRatio && !Rule.bUseMaxAspectRatio) Parts.Add(TEXT("Any"));
 	if (Rule.ScaleMode == EDPIBreakpointScaleMode::Fixed) Parts.Add(FString::Printf(TEXT("Fixed %.2f"), Rule.TargetUIScale));
+	else if (Rule.ScaleMode == EDPIBreakpointScaleMode::Clamp)
+	{
+		if (Rule.bUseMinClamp && Rule.bUseMaxClamp) Parts.Add(FString::Printf(TEXT("Clamp %.2f–%.2f"), Rule.MinClamp, Rule.MaxClamp));
+		else if (Rule.bUseMinClamp) Parts.Add(FString::Printf(TEXT("Clamp ≥ %.2f"), Rule.MinClamp));
+		else if (Rule.bUseMaxClamp) Parts.Add(FString::Printf(TEXT("Clamp ≤ %.2f"), Rule.MaxClamp));
+		else Parts.Add(TEXT("Clamp"));
+	}
 	else if (Rule.ScaleMode == EDPIBreakpointScaleMode::Curve) Parts.Add(TEXT("Curve"));
 	else Parts.Add(TEXT("Project DPI"));
-	Parts.Add(FString::Printf(TEXT("P%d"), Rule.Priority));
 	return FText::FromString(FString::Join(Parts, TEXT("  •  ")));
 }

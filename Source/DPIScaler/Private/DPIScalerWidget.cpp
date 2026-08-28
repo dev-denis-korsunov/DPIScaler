@@ -6,13 +6,13 @@
 #include "Widgets/Layout/SDPIScaler.h"
 
 FDPIBreakpointRule::FDPIBreakpointRule()
-	: Name(TEXT("Default")), bEnabled(true), Priority(0), Orientation(EDPIBreakpointOrientation::Any), BreakpointRule(EDPIBreakpointRuleDirection::Min)
-	, bUseWidthBreakpoint(false), WidthBreakpoint(0), bUseHeightBreakpoint(false), HeightBreakpoint(0)
-	, MinAspectRatio(0.0f), MaxAspectRatio(0.0f), ScaleMode(EDPIBreakpointScaleMode::UseProjectDPI)
-	, TargetUIScale(1.0f), CurveAxis(EDPIBreakpointCurveAxis::ShortSide), MinScale(0.0f), MaxScale(0.0f), SnapStep(0.0f)
+	: Name(TEXT("Default")), bUseWidthBreakpoint(false), WidthBreakpoint(0), bUseHeightBreakpoint(false), HeightBreakpoint(0)
+	, bUseMinAspectRatio(false), MinAspectRatio(0.75f), bUseMaxAspectRatio(false), MaxAspectRatio(1.78f), ScaleMode(EDPIBreakpointScaleMode::Curve)
+	, TargetUIScale(1.0f), bUseMinClamp(false), MinClamp(0.75f), bUseMaxClamp(false), MaxClamp(1.25f), ScaleAxis(EDPIBreakpointScaleAxis::ScreenWidth)
 {
-	ScaleCurve.GetRichCurve()->AddKey(0.0f, 1.0f);
-	ScaleCurve.GetRichCurve()->AddKey(1080.0f, 1.0f);
+	FRichCurve* Curve = ScaleCurve.GetRichCurve();
+	Curve->SetKeyInterpMode(Curve->AddKey(0.0f, 0.0f), RCIM_Linear);
+	Curve->SetKeyInterpMode(Curve->AddKey(1920.0f, 1.0f), RCIM_Linear);
 }
 
 UDPIScalerWidget::UDPIScalerWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -81,20 +81,15 @@ const FDPIBreakpointRule* UDPIScalerWidget::FindActiveRule(const FIntPoint& View
 {
 	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0) return nullptr;
 	const float AspectRatio = static_cast<float>(ViewportSize.X) / static_cast<float>(ViewportSize.Y);
-	const FDPIBreakpointRule* ActiveRule = nullptr;
 	for (const FDPIBreakpointRule& Rule : DPIRules)
 	{
-		if (!Rule.bEnabled || (ActiveRule != nullptr && Rule.Priority <= ActiveRule->Priority)) continue;
-		if (Rule.Orientation == EDPIBreakpointOrientation::Portrait && ViewportSize.X >= ViewportSize.Y) continue;
-		if (Rule.Orientation == EDPIBreakpointOrientation::Landscape && ViewportSize.X < ViewportSize.Y) continue;
-		const bool bMinimumRule = Rule.BreakpointRule == EDPIBreakpointRuleDirection::Min;
-		if (Rule.bUseWidthBreakpoint && (bMinimumRule ? ViewportSize.X > Rule.WidthBreakpoint : ViewportSize.X < Rule.WidthBreakpoint)) continue;
-		if (Rule.bUseHeightBreakpoint && (bMinimumRule ? ViewportSize.Y > Rule.HeightBreakpoint : ViewportSize.Y < Rule.HeightBreakpoint)) continue;
-		if (Rule.MinAspectRatio > 0.0f && AspectRatio < Rule.MinAspectRatio) continue;
-		if (Rule.MaxAspectRatio > 0.0f && AspectRatio > Rule.MaxAspectRatio) continue;
-		ActiveRule = &Rule;
+		if (Rule.bUseWidthBreakpoint && ViewportSize.X > Rule.WidthBreakpoint) continue;
+		if (Rule.bUseHeightBreakpoint && ViewportSize.Y > Rule.HeightBreakpoint) continue;
+		if (Rule.bUseMinAspectRatio && AspectRatio < Rule.MinAspectRatio) continue;
+		if (Rule.bUseMaxAspectRatio && AspectRatio > Rule.MaxAspectRatio) continue;
+		return &Rule;
 	}
-	return ActiveRule;
+	return nullptr;
 }
 
 float UDPIScalerWidget::ResolveTargetUIScale(float ProjectDPIScale, const FIntPoint& ViewportSize, const FDPIBreakpointRule* Rule) const
@@ -106,25 +101,27 @@ float UDPIScalerWidget::ResolveTargetUIScale(float ProjectDPIScale, const FIntPo
 	{
 		Result = Rule->TargetUIScale;
 	}
+	else if (Rule->ScaleMode == EDPIBreakpointScaleMode::Clamp)
+	{
+		const float LowerLimit = Rule->bUseMinClamp ? FMath::Max(Rule->MinClamp, UE_SMALL_NUMBER) : UE_SMALL_NUMBER;
+		const float UpperLimit = Rule->bUseMaxClamp ? FMath::Max(Rule->MaxClamp, LowerLimit) : BIG_NUMBER;
+		Result = FMath::Clamp(Result, LowerLimit, UpperLimit);
+	}
 	else if (Rule->ScaleMode == EDPIBreakpointScaleMode::Curve)
 	{
-		float CurveTime = FMath::Min(ViewportSize.X, ViewportSize.Y);
-		switch (Rule->CurveAxis)
+		float AxisValue = FMath::Min(ViewportSize.X, ViewportSize.Y);
+		switch (Rule->ScaleAxis)
 		{
-		case EDPIBreakpointCurveAxis::LongSide: CurveTime = FMath::Max(ViewportSize.X, ViewportSize.Y); break;
-		case EDPIBreakpointCurveAxis::ScreenWidth: CurveTime = ViewportSize.X; break;
-		case EDPIBreakpointCurveAxis::ScreenHeight: CurveTime = ViewportSize.Y; break;
+		case EDPIBreakpointScaleAxis::LongSide: AxisValue = FMath::Max(ViewportSize.X, ViewportSize.Y); break;
+		case EDPIBreakpointScaleAxis::ScreenWidth: AxisValue = ViewportSize.X; break;
+		case EDPIBreakpointScaleAxis::ScreenHeight: AxisValue = ViewportSize.Y; break;
 		default: break;
 		}
-		Result = Rule->ScaleCurve.GetRichCurveConst()->Eval(CurveTime, 1.0f);
+		Result = Rule->ScaleCurve.GetRichCurveConst()->Eval(AxisValue, 1.0f);
 	}
 
 	if (!FMath::IsFinite(Result)) Result = 1.0f;
-	const float LowerLimit = Rule->MinScale > 0.0f ? Rule->MinScale : UE_SMALL_NUMBER;
-	const float UpperLimit = Rule->MaxScale > 0.0f ? FMath::Max(Rule->MaxScale, LowerLimit) : BIG_NUMBER;
-	Result = FMath::Clamp(Result, LowerLimit, UpperLimit);
-	if (Rule->SnapStep > 0.0f) Result = FMath::GridSnap(Result, Rule->SnapStep);
-	return FMath::Clamp(Result, LowerLimit, UpperLimit);
+	return FMath::Max(Result, UE_SMALL_NUMBER);
 }
 
 void UDPIScalerWidget::SetDPIRules(const TArray<FDPIBreakpointRule>& InDPIRules)

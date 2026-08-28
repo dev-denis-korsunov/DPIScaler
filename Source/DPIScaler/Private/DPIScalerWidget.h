@@ -6,30 +6,16 @@
 #include "DPIScalerWidget.generated.h"
 
 UENUM(BlueprintType)
-enum class EDPIBreakpointOrientation : uint8
-{
-	Any,
-	Portrait,
-	Landscape
-};
-
-UENUM(BlueprintType)
 enum class EDPIBreakpointScaleMode : uint8
 {
 	UseProjectDPI UMETA(DisplayName = "Use Project DPI"),
 	Fixed,
+	Clamp,
 	Curve
 };
 
 UENUM(BlueprintType)
-enum class EDPIBreakpointRuleDirection : uint8
-{
-	Min UMETA(DisplayName = "Min (0 to Breakpoint)"),
-	Max UMETA(DisplayName = "Max (Breakpoint and Above)")
-};
-
-UENUM(BlueprintType)
-enum class EDPIBreakpointCurveAxis : uint8
+enum class EDPIBreakpointScaleAxis : uint8
 {
 	ShortSide UMETA(DisplayName = "Short Side"),
 	LongSide UMETA(DisplayName = "Long Side"),
@@ -43,26 +29,24 @@ struct DPISCALER_API FDPIBreakpointRule
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rule") FName Name;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rule") bool bEnabled;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rule") int32 Priority;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match") EDPIBreakpointOrientation Orientation;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Breakpoint Rule") EDPIBreakpointRuleDirection BreakpointRule;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseWidthBreakpoint;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (EditCondition = "bUseWidthBreakpoint", ClampMin = "0")) int32 WidthBreakpoint;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseHeightBreakpoint;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (EditCondition = "bUseHeightBreakpoint", ClampMin = "0")) int32 HeightBreakpoint;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Minimum Aspect Ratio", meta = (ClampMin = "0.0")) float MinAspectRatio;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Match|Advanced", DisplayName = "Maximum Aspect Ratio", meta = (ClampMin = "0.0")) float MaxAspectRatio;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseMinAspectRatio;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Minimum Aspect Ratio", meta = (EditCondition = "bUseMinAspectRatio", ClampMin = "0.0001")) float MinAspectRatio;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", meta = (InlineEditConditionToggle)) bool bUseMaxAspectRatio;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Match", DisplayName = "Maximum Aspect Ratio", meta = (EditCondition = "bUseMaxAspectRatio", ClampMin = "0.0001")) float MaxAspectRatio;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale") EDPIBreakpointScaleMode ScaleMode;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", DisplayName = "Target UI Scale", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Fixed", EditConditionHides, ClampMin = "0.0001")) float TargetUIScale;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Curve", EditConditionHides)) EDPIBreakpointCurveAxis CurveAxis;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", meta = (InlineEditConditionToggle)) bool bUseMinClamp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", DisplayName = "Min Scale", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Clamp && bUseMinClamp", EditConditionHides, ClampMin = "0.0001")) float MinClamp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", meta = (InlineEditConditionToggle)) bool bUseMaxClamp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", DisplayName = "Max Scale", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Clamp && bUseMaxClamp", EditConditionHides, ClampMin = "0.0001")) float MaxClamp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", DisplayName = "Scale Axis", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Curve", EditConditionHides)) EDPIBreakpointScaleAxis ScaleAxis;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scale", DisplayName = "Scale Curve", meta = (EditCondition = "ScaleMode == EDPIBreakpointScaleMode::Curve", EditConditionHides)) FRuntimeFloatCurve ScaleCurve;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Limits", DisplayName = "Minimum Scale", meta = (ClampMin = "0.0", ToolTip = "Zero disables the lower limit.")) float MinScale;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Limits", DisplayName = "Maximum Scale", meta = (ClampMin = "0.0", ToolTip = "Zero disables the upper limit.")) float MaxScale;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Limits", DisplayName = "Snap Step", meta = (ClampMin = "0.0", ToolTip = "Zero disables snapping.")) float SnapStep;
 
 	FDPIBreakpointRule();
 };
