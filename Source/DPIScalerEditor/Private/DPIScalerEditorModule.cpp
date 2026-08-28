@@ -29,13 +29,23 @@ namespace UE::DPIScalerEditor::Private
 			static_cast<uint8>(FMath::RoundToInt(Brightness * 255.0f)));
 	}
 
-	static int32 GetRulerMaximum(float CurrentSize, const TArray<FDPIBreakpointRule>& Rules, bool bWidth)
+	static int32 GetRulerMaximum(const FVector2D& ViewportSize, const TArray<FDPIBreakpointRule>& Rules, bool bWidth)
 	{
+		const float CurrentSize = bWidth ? ViewportSize.X : ViewportSize.Y;
 		int32 Maximum = FMath::Max(1, FMath::CeilToInt(CurrentSize));
 		for (const FDPIBreakpointRule& Rule : Rules)
 		{
 			const bool bUsesAxis = bWidth ? Rule.bUseWidthBreakpoint : Rule.bUseHeightBreakpoint;
 			if (bUsesAxis) Maximum = FMath::Max(Maximum, bWidth ? Rule.WidthBreakpoint : Rule.HeightBreakpoint);
+
+			if (bWidth && Rule.bUseMaxAspectRatio)
+			{
+				Maximum = FMath::Max(Maximum, FMath::CeilToInt(Rule.MaxAspectRatio * ViewportSize.Y));
+			}
+			else if (!bWidth && Rule.bUseMinAspectRatio && Rule.MinAspectRatio > 0.0f)
+			{
+				Maximum = FMath::Max(Maximum, FMath::CeilToInt(ViewportSize.X / Rule.MinAspectRatio));
+			}
 		}
 		return Maximum;
 	}
@@ -76,7 +86,7 @@ namespace UE::DPIScalerEditor::Private
 	static void DrawRuler(const UDPIScalerWidget& Scaler, const FDPIBreakpointRule* ActiveRule, const FGeometry& AllottedGeometry, const FVector2D& Origin, float UnitsToSlate, const FVector2D& ViewportSize, bool bWidth, FSlateWindowElementList& DrawElements, int32 LayerId)
 	{
 		const float CurrentViewportSize = bWidth ? ViewportSize.X : ViewportSize.Y;
-		const int32 Maximum = GetRulerMaximum(CurrentViewportSize, Scaler.DPIRules, bWidth);
+		const int32 Maximum = GetRulerMaximum(ViewportSize, Scaler.DPIRules, bWidth);
 		const float RulerLength = Maximum * UnitsToSlate;
 		const FVector2D RulerPosition = bWidth ? FVector2D(Origin.X, Origin.Y - RulerThickness - RulerGap) : FVector2D(Origin.X - RulerThickness - RulerGap, Origin.Y);
 		static const FSlateRoundedBoxBrush RangeFillBrush(FLinearColor::White, 8.0f);
