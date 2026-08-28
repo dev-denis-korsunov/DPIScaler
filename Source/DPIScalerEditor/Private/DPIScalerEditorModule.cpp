@@ -166,8 +166,8 @@ namespace UE::DPIScalerEditor::Private
 		const int32 ActiveRuleIndex = Scaler.DPIRules.IndexOfByPredicate([ActiveRule](const FDPIBreakpointRule& Rule) { return &Rule == ActiveRule; });
 		const FLinearColor ActiveRuleColor = ActiveRuleIndex != INDEX_NONE ? GetRuleColor(ActiveRuleIndex, 0.60f, 0.70f) : FLinearColor(0.55f, 0.55f, 0.55f);
 		static const FSlateRoundedBoxBrush ActiveRuleIndicatorBrush(FLinearColor::White, 3.0f);
-		const FVector2D IndicatorSize(30.0f, 6.0f);
-		const FVector2D IndicatorPosition = StatusPosition + FVector2D(-34.0f, 3.0f);
+		const FVector2D IndicatorSize(30.0f, 4.0f);
+		const FVector2D IndicatorPosition = StatusPosition + FVector2D(-34.0f, 4.0f);
 		FSlateDrawElement::MakeBox(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(IndicatorSize, FSlateLayoutTransform(IndicatorPosition)), &ActiveRuleIndicatorBrush, ESlateDrawEffect::None, ActiveRuleColor);
 		FSlateDrawElement::MakeText(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(StatusSize, FSlateLayoutTransform(StatusPosition)), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
