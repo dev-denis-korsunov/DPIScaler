@@ -1,5 +1,8 @@
 # DPI Scaler
 
+<img width="1430" height="1136" alt="image" src="https://github.com/user-attachments/assets/71b2ef91-053f-43ab-943d-6586c4106919" />
+
+
 `DPI Scaler` is a runtime UMG container widget that scales one child according to simple DPI breakpoint rules. It is useful when the project's global DPI curve is not enough and a specific UI subtree needs its own scaling behavior.
 
 ## Installation
