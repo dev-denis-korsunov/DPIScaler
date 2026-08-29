@@ -1,23 +1,29 @@
 # DPI Scaler
 
-<img width="951" height="576" alt="image _" src="https://github.com/user-attachments/assets/4d6f49dd-0e8f-46f8-b09b-fa86c040938c" />
+<img width="951" height="576" alt="DPI Scaler designer rulers" src="https://github.com/user-attachments/assets/4d6f49dd-0e8f-46f8-b09b-fa86c040938c" />
 
+`DPI Scaler` is an **Unreal Engine 5 UMG plugin**. It adds a container widget that scales one child from viewport-size rules, so a specific UI subtree can respond independently of the project-wide DPI curve.
 
+## What it adds
 
-`DPI Scaler` is a runtime UMG container widget that scales one child according to simple DPI breakpoint rules. It is useful when the project's global DPI curve is not enough and a specific UI subtree needs its own scaling behavior.
+- **Local DPI scaling** for a UMG subtree, without changing the project's global DPI settings.
+- **Ordered viewport rules** with optional width, height, and aspect-ratio constraints.
+- **Project DPI**, **Fixed**, and **Curve** scale modes.
+- The Blueprint node **Set DPI Rules** for runtime rule replacement.
+- **Designer rulers** that visualize which width and height ranges match each rule.
 
 ## Installation
 
-Enable the **DPI Scaler** plugin in Unreal Editor, then restart the editor if prompted. The widget appears in the UMG Palette as **DPI Scaler**.
+Enable the **DPI Scaler** plugin in Unreal Editor. The **DPI Scaler** widget appears in the UMG Palette after the plugin loads.
 
-## Basic usage
+## Basic setup
 
-1. Add a **DPI Scaler** widget to a Widget Blueprint.
-2. Add one child widget to it.
-3. Configure one or more entries in **DPI Rules**.
-4. Give more specific rules a higher **Priority**.
+1. Add a **DPI Scaler** to a Widget Blueprint.
+2. Give it one child panel — usually a `Canvas Panel`.
+3. Add rules in **DPI Rules**. Array entries use the rule `Name` as their title.
+4. Put the most specific rule first; the first matching rule wins.
 
-The recommended hierarchy is:
+Recommended hierarchy:
 
 ```text
 DPI Scaler
@@ -25,78 +31,66 @@ DPI Scaler
     └── UI content
 ```
 
-Use the DPI Scaler as the root container for the UI subtree that must be scaled. Keep its child as a single panel, typically a `Canvas Panel`.
+Do not wrap a `Scale Box` with a `DPI Scaler`, or place a `DPI Scaler` inside a `Scale Box`, in the same layout branch. Use one scaling mechanism for that branch. Nested DPI Scalers are supported intentionally: an inner scaler resolves its local scale relative to the outer scaler rather than multiplying both final scales.
 
-## DPI breakpoint rules
+## DPI rules
 
-Each enabled rule contains:
+A rule has a `Name`, optional match conditions, and a scale mode.
 
-- **Name**, **Enabled**, and **Priority**.
-- **Match**: orientation, one `Min` or `Max` direction, and optional width and height breakpoints.
-- **Advanced Match**: minimum or maximum aspect ratio.
-- **Scale Mode**: `Use Project DPI`, `Fixed`, or `Curve`.
-- Optional **Limits**: minimum scale, maximum scale, and snap step.
+### Matching a viewport
 
-Zero means unbounded or disabled for optional bounds and limits. `Fixed` and `Curve` produce a final **Target UI Scale**, not a multiplier.
+All enabled conditions are combined with `AND`:
 
-**Breakpoint Rule** controls both optional breakpoints:
+- **Width Breakpoint**: viewport width is `≤` its value.
+- **Height Breakpoint**: viewport height is `≤` its value.
+- **Minimum Aspect Ratio**: `width / height` is at least the configured value.
+- **Maximum Aspect Ratio**: `width / height` is at most the configured value.
 
-- `Min` (default) means `0 ... Breakpoint`.
-- `Max` means `Breakpoint ... infinity`.
-- When both breakpoints are enabled, width and height conditions are combined with `AND`.
-- When only one breakpoint is enabled, the other dimension is unrestricted.
-- When neither breakpoint is enabled, the size match is `Any`.
+Each condition is optional. With only a width breakpoint, every height is accepted; with no conditions, the rule matches every valid viewport. Rules are evaluated from the beginning of the array, and the first match is used. If nothing matches, the project DPI scale is used.
 
-Rules resolve as follows:
+For portrait device classes, `Width Breakpoint` is the short side. A practical broad phone rule is `Width ≤ 1440`; use lower breakpoints when the design has distinct compact and large-phone layouts.
 
-1. The matching enabled rule with the highest priority wins.
-2. If priorities are equal, the first rule in the array wins.
-3. If no rule matches, the project DPI scale is used.
-4. Limits and snap are applied to the selected result, and the final scale is kept positive.
+### Scale modes
 
-A practical starting set is:
+- **Use Project DPI**: returns the project DPI scale unchanged.
+- **Fixed**: returns `Target UI Scale` as the final scale.
+- **Curve**: evaluates `Scale Curve` on `Short Side`, `Long Side`, `Screen Width`, or `Screen Height`. The curve value is the final scale, not a multiplier.
 
-| Rule | Match | Scale |
-| --- | --- | --- |
-| Mobile | Min, W ≤ 720 | Fixed 0.80 |
-| Tablet | Min, W ≤ 1080 | Fixed 0.95 |
-| Default | Any | Use Project DPI |
+New rules default to a width curve from `(0, 0)` to `(1920, 1)`. Tune this curve for continuous responsive scaling, or use `Fixed` for a discrete target scale.
 
-Assign priorities such as `100`, `50`, and `0` respectively.
+### Common configurations
+
+| Rule order | Match | Scale mode | Use case |
+| --- | --- | --- | --- |
+| 1. Compact phone | Width ≤ 720 | Fixed 0.80 | Small portrait layouts |
+| 2. Phone | Width ≤ 1440 | Curve / Fixed | General phones, including high-density devices |
+| 3. Default | No conditions | Use Project DPI | Tablets, desktop, and fallback |
+
+The compact rule must be first because it also satisfies the wider phone rule.
 
 ## Runtime updates
 
-For runtime changes, use the Blueprint node **Set DPI Rules**. It replaces the rule array and invalidates the Slate layout, so the new scale is applied immediately.
+Use the Blueprint node **Set DPI Rules** to replace the whole array at runtime. The widget invalidates its layout immediately, so the new result is applied on the next Slate pass.
 
-## Layout guidelines
+## Designer preview
 
-- Prefer `DPI Scaler → Canvas Panel → content`.
-- Do not place a `DPI Scaler` inside a `Scale Box`, and do not wrap a `Scale Box` with a `DPI Scaler` in the same layout branch. Both widgets calculate scale from layout geometry, which can lead to double scaling or unstable desired sizes.
-- Avoid nesting DPI Scalers unless it is intentional. Each nested scaler resolves its own final target scale relative to the parent scaler.
-- Test at all target resolutions and aspect ratios, especially if anchors, fixed canvas offsets, or `Scale Box` are involved.
+Select one **DPI Scaler** in the UMG Designer to see rulers above and to the left of the widget:
 
-## Editor preview
+- The top ruler shows the currently valid width ranges.
+- The left ruler shows the currently valid height ranges.
+- Colors are deterministic from rule order. The active rule is brighter; inactive ranges remain muted.
+- Aspect-ratio and opposite-axis conditions clip the visible range correctly.
+- The status text shows the active rule and final scale. **Designer Mute** temporarily returns scale `1.0` in the Designer.
 
-The widget responds to UMG screen preview settings. Enable **Designer Mute** to temporarily disable its custom scale in the designer.
+Rules are edited in the Details panel; the rulers are a visual aid, not a direct editor for breakpoints.
 
-When a single **DPI Scaler** is selected in the UMG Designer, the plugin draws responsive rulers above and to the left of the widget:
+## Testing
 
-- The top ruler represents viewport width.
-- The left ruler represents viewport height.
-- `W` and `H` show the current preview viewport size.
-- Each enabled rule gets a stable palette color. Colored ranges show where that rule can match, including orientation and aspect-ratio conditions.
-- Each ruler is a slice through the complete two-dimensional match region: a width range is shown only when the current height satisfies the rule, and a height range is shown only when the current width satisfies it.
-- If an axis has no breakpoint and the configured opposite-axis condition matches, that ruler is colored across its full length.
-- Higher-priority rules paint over lower-priority rules only inside their own ranges. The currently active rule is rendered with dominant opacity; inactive ranges remain visible but muted.
-- Colored markers show exact width and height breakpoints from **DPI Rules**.
-- A compact status inside the top ruler shows the active rule and final target scale.
+Automation tests cover rule precedence, width/height and aspect-ratio boundaries, scale outputs, and a worst-case rule-search benchmark. Run:
 
-The rulers are a visual editing aid. Breakpoint values are currently edited in the **DPI Rules** array in the Details panel. Collapsed array entries show summaries such as `Mobile • W ≤ 720 • Fixed 0.80 • P100`.
+```text
+DPIScaler.Rules
+DPIScaler.Performance.RuleSearch
+```
 
-## Compatibility
-
-The plugin contains a runtime module and an editor-only UMG Designer extension for Unreal Engine 5. The runtime module depends on `UMG`, `Slate`, and `SlateCore`.
-
-The old Media Queries API is intentionally not retained. Projects upgrading from an earlier plugin revision must recreate old rules with `FDPIBreakpointRule` and replace `Set Media Queries` Blueprint nodes with `Set DPI Rules`.
-
-Version 3 replaces the experimental Size Metric fields with one `Min`/`Max` direction and two optional width/height breakpoints. Rules created with the version 2 structure must be configured again.
+from Unreal's Automation window.

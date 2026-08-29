@@ -72,7 +72,7 @@ public:
 	bool bDesignerMute = false;
 #endif
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DPI Scaler", DisplayName = "DPI Rules")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DPI Scaler", DisplayName = "DPI Rules", meta=(TitleProperty="Name"))
 	TArray<FDPIBreakpointRule> DPIRules;
 
 	UFUNCTION(BlueprintCallable, Category = "DPI Scaler", meta = (DisplayName = "Set DPI Rules"))

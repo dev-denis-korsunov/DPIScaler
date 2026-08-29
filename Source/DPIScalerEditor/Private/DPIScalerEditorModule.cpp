@@ -163,12 +163,6 @@ namespace UE::DPIScalerEditor::Private
 		const FText Status = FText::FromString(FString::Printf(TEXT("Active: %s  •  Scale %.2f"), *RuleName, FinalScale));
 		const FVector2D StatusPosition = Origin + FVector2D(70.0f, -InformationTextOffset);
 		const FVector2D StatusSize(FMath::Max(Size.X - 76.0f, 120.0f), 12.0f);
-		const int32 ActiveRuleIndex = Scaler.DPIRules.IndexOfByPredicate([ActiveRule](const FDPIBreakpointRule& Rule) { return &Rule == ActiveRule; });
-		const FLinearColor ActiveRuleColor = ActiveRuleIndex != INDEX_NONE ? GetRuleColor(ActiveRuleIndex, 0.60f, 0.70f) : FLinearColor(0.55f, 0.55f, 0.55f);
-		static const FSlateRoundedBoxBrush ActiveRuleIndicatorBrush(FLinearColor::White, 3.0f);
-		const FVector2D IndicatorSize(30.0f, 4.0f);
-		const FVector2D IndicatorPosition = StatusPosition + FVector2D(-34.0f, 4.0f);
-		FSlateDrawElement::MakeBox(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(IndicatorSize, FSlateLayoutTransform(IndicatorPosition)), &ActiveRuleIndicatorBrush, ESlateDrawEffect::None, ActiveRuleColor);
 		FSlateDrawElement::MakeText(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(StatusSize, FSlateLayoutTransform(StatusPosition)), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);
 	}
 
