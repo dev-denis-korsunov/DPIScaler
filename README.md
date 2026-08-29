@@ -1,6 +1,8 @@
 # DPI Scaler
 
-<img width="951" height="576" alt="DPI Scaler designer rulers" src="https://github.com/user-attachments/assets/4d6f49dd-0e8f-46f8-b09b-fa86c040938c" />
+<img width="1416" height="858" alt="image 11" src="https://github.com/user-attachments/assets/f41f5e67-c413-4633-9cd8-58a7a572372d" />
+
+
 
 `DPI Scaler` is an **Unreal Engine 5 UMG plugin**. It adds a container widget that scales one child from viewport-size rules, so a specific UI subtree can respond independently of the project-wide DPI curve.
 
