@@ -1,8 +1,6 @@
 # DPI Scaler
 
-<img width="951" height="576" alt="image" src="https://github.com/user-attachments/assets/7b48f38b-c636-4d13-84bf-11beb1d5c8d1" />
-
-
+<img width="951" height="576" alt="image _" src="https://github.com/user-attachments/assets/4d6f49dd-0e8f-46f8-b09b-fa86c040938c" />
 
 
 
