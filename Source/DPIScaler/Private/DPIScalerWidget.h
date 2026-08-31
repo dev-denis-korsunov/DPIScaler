@@ -77,6 +77,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "DPI Scaler", meta = (DisplayName = "Set DPI Rules"))
 	void SetDPIRules(const TArray<FDPIBreakpointRule>& InDPIRules);
+	UFUNCTION(BlueprintPure, Category = "DPI Scaler", meta = (DisplayName = "Is Active Rule"))
+	bool IsActiveRule(FName RuleName) const;
 
 	const FDPIBreakpointRule* FindActiveRule(const FIntPoint& ViewportSize) const;
 	float ResolveTargetUIScale(float ProjectDPIScale, const FIntPoint& ViewportSize, const FDPIBreakpointRule* Rule) const;
@@ -85,6 +87,7 @@ public:
 	virtual void SynchronizeProperties() override;
 
 protected:
+	bool GetDPIContext(float& OutApplicationScale, FIntPoint& OutViewportSize) const;
 	float GetDPIScale() const;
 	float GetAbsoluteDesiredDPIScale(float ApplicationScale, const FIntPoint& ViewportSize) const;
 	const UDPIScalerWidget* FindParentDPIScaler() const;

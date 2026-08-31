@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 3,
-	"VersionName": "3.0.0",
+	"Version": 1,
+	"VersionName": "1.0.0",
 	"FriendlyName": "DPI Scaler",
 	"Description": "Blueprint UMG widget for DPI scaling with breakpoint rules and Designer rulers.",
 	"Category": "UI",

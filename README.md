@@ -72,7 +72,7 @@ The compact rule must be first because it also satisfies the wider phone rule.
 
 ## Runtime updates
 
-Use the Blueprint node **Set DPI Rules** to replace the whole array at runtime. The widget invalidates its layout immediately, so the new result is applied on the next Slate pass.
+Use the Blueprint node **Set DPI Rules** to replace the whole array at runtime. The widget invalidates its layout immediately, so the new result is applied on the next Slate pass. Use **Is Active Rule** with a rule name to branch Blueprint logic for the rule currently selected by the viewport.
 
 ## Designer preview
 
@@ -82,7 +82,7 @@ Select one **DPI Scaler** in the UMG Designer to see rulers above and to the lef
 - The left ruler shows the currently valid height ranges.
 - Colors are deterministic from rule order. The active rule is brighter; inactive ranges remain muted.
 - Aspect-ratio and opposite-axis conditions clip the visible range correctly.
-- The status text shows the active rule and final scale. **Designer Mute** temporarily returns scale `1.0` in the Designer.
+- The status text shows the active rule and final scale. **Designer Mute** temporarily uses the preview project DPI scale in the Designer.
 
 Rules are edited in the Details panel; the rulers are a visual aid, not a direct editor for breakpoints.
 

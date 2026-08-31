@@ -27,24 +27,16 @@ float UDPIScalerWidget::GetDPIScale() const
 #if WITH_EDITORONLY_DATA
 	if (IsDesignTime() && (bDesignerMute || !bScreenPreview))
 	{
+	#if WITH_EDITOR
+		return DesignerDpi.Get(1.0f);
+	#else
 		return 1.0f;
+	#endif
 	}
 #endif
 	float ApplicationScale = 1.0f;
 	FIntPoint ViewportSize = FIntPoint::ZeroValue;
-#if WITH_EDITOR
-	if (DesignerDpi.IsSet() && DesignerSize.IsSet())
-	{
-		ApplicationScale = DesignerDpi.GetValue();
-		ViewportSize = DesignerSize.GetValue().IntPoint();
-	}
-	else
-#endif
-	{
-		ApplicationScale = UWidgetLayoutLibrary::GetViewportScale(GetWorld());
-		ViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld()).IntPoint();
-	}
-	if (ViewportSize.X <= 0 || ViewportSize.Y <= 0)
+	if (!GetDPIContext(ApplicationScale, ViewportSize))
 	{
 		return 1.0f;
 	}
@@ -58,6 +50,43 @@ float UDPIScalerWidget::GetDPIScale() const
 		return 1.0f;
 	}
 	return ResultScale;
+}
+
+bool UDPIScalerWidget::GetDPIContext(float& OutApplicationScale, FIntPoint& OutViewportSize) const
+{
+	OutApplicationScale = 1.0f;
+	OutViewportSize = FIntPoint::ZeroValue;
+#if WITH_EDITOR
+	if (DesignerDpi.IsSet() && DesignerSize.IsSet())
+	{
+		OutApplicationScale = DesignerDpi.GetValue();
+		OutViewportSize = DesignerSize.GetValue().IntPoint();
+	}
+	else
+#endif
+	{
+		OutApplicationScale = UWidgetLayoutLibrary::GetViewportScale(GetWorld());
+		OutViewportSize = UWidgetLayoutLibrary::GetViewportSize(GetWorld()).IntPoint();
+	}
+	return OutViewportSize.X > 0 && OutViewportSize.Y > 0;
+}
+
+bool UDPIScalerWidget::IsActiveRule(FName RuleName) const
+{
+	if (RuleName.IsNone())
+	{
+		return false;
+	}
+
+	float ApplicationScale = 1.0f;
+	FIntPoint ViewportSize = FIntPoint::ZeroValue;
+	if (!GetDPIContext(ApplicationScale, ViewportSize))
+	{
+		return false;
+	}
+
+	const FDPIBreakpointRule* ActiveRule = FindActiveRule(ViewportSize);
+	return ActiveRule != nullptr && ActiveRule->Name == RuleName;
 }
 
 const UDPIScalerWidget* UDPIScalerWidget::FindParentDPIScaler() const

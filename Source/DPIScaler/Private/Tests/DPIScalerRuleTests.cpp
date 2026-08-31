@@ -30,6 +30,13 @@ bool FDPIScalerRuleSelectionTest::RunTest(const FString& Parameters)
 	Scaler->DPIRules = { MobileRule, TabletRule, DefaultRule };
 	const FDPIBreakpointRule* ActiveRule = Scaler->FindActiveRule(FIntPoint(600, 1000));
 	TestEqual(TEXT("First matching rule wins"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Mobile")));
+#if WITH_EDITOR
+	Scaler->DesignerDpi = 1.0f;
+	Scaler->DesignerSize = FVector2D(600.0f, 1000.0f);
+	TestTrue(TEXT("Active-rule query matches the active rule name"), Scaler->IsActiveRule(TEXT("Mobile")));
+	TestFalse(TEXT("Active-rule query rejects inactive rule names"), Scaler->IsActiveRule(TEXT("Tablet")));
+	TestFalse(TEXT("Active-rule query rejects an empty rule name"), Scaler->IsActiveRule(NAME_None));
+#endif
 	ActiveRule = Scaler->FindActiveRule(FIntPoint(900, 1280));
 	TestEqual(TEXT("Width breakpoint selects tablet"), ActiveRule != nullptr ? ActiveRule->Name : NAME_None, FName(TEXT("Tablet")));
 	ActiveRule = Scaler->FindActiveRule(FIntPoint(2560, 1440));
