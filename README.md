@@ -10,11 +10,13 @@
 
 
 
-`DPI Scaler` is an **Unreal Engine 5 UMG plugin**. It adds a container widget that scales one child from viewport-size rules, so a specific UI subtree can respond independently of the project-wide DPI curve.
+`DPI Scaler` is an **Unreal Engine 5 UMG plugin** for resolving responsive-layout conflicts in a specific UI subtree. It gives that branch an independent, predictable scale context when the project DPI curve and ordinary layout rules lead to overlapping, clipping, or unstable composition at unusual viewport sizes.
+
+Rather than maintaining exact per-device resolution profiles, define a small ordered set of broad viewport rules and let the scaler select the first one that matches. This keeps exceptional mobile, tablet, aspect-ratio, and edge-resolution cases contained to the affected UI without changing the project-wide DPI curve.
 
 ## What it adds
 
-- **Local DPI scaling** for a UMG subtree, without changing the project's global DPI settings.
+- **Local DPI scaling** that isolates exceptional responsive cases without changing the project's global DPI settings.
 - **Ordered viewport rules** with optional width, height, and aspect-ratio constraints.
 - **Project DPI**, **Fixed**, and **Curve** scale modes.
 - The Blueprint node **Is Active Rule** for viewport-aware UI logic.
