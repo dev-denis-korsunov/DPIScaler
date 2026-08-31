@@ -73,16 +73,6 @@ For portrait device classes, `Width Breakpoint` is the short side. A practical b
 
 New rules default to a width curve from `(0, 0)` to `(1920, 1)`. Tune this curve for continuous responsive scaling, or use `Fixed` for a discrete target scale.
 
-### Common configurations
-
-| Rule order | Match | Scale mode | Use case |
-| --- | --- | --- | --- |
-| 1. Compact phone | Width ≤ 720 | Fixed 0.80 | Small portrait layouts |
-| 2. Phone | Width ≤ 1440 | Curve / Fixed | General phones, including high-density devices |
-| 3. Default | No conditions | Use Project DPI | Tablets, desktop, and fallback |
-
-The compact rule must be first because it also satisfies the wider phone rule.
-
 ### Scale reference
 
 `Scale Reference` controls the fallback scale used by rules in `Use Project DPI` mode:
