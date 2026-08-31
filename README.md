@@ -10,25 +10,28 @@
 
 
 
-`DPI Scaler` is an **Unreal Engine 5 UMG plugin** for resolving responsive-layout conflicts in a specific UI subtree. It gives that branch an independent, predictable scale context when the project DPI curve and ordinary layout rules lead to overlapping, clipping, or unstable composition at unusual viewport sizes.
+DPI Scaler is an **Unreal Engine 5 UMG plugin** for resolving responsive-layout conflicts in a specific UI subtree. It gives that branch an independent, predictable scale context when the project DPI curve and ordinary layout rules lead to overlapping, clipping, or unstable composition at unusual viewport sizes.
 
 Rather than maintaining exact per-device resolution profiles, define a small ordered set of broad viewport rules and let the scaler select the first one that matches. This keeps exceptional mobile, tablet, aspect-ratio, and edge-resolution cases contained to the affected UI without changing the project-wide DPI curve.
+
+Keep DPI Scaler local to the UI branch that needs it. Avoid placing it at the root of a large tree: UMG Designer always uses the project `DPI Scale` from Project Settings, so a global scaler cannot be previewed with a correct local scale context and may affect unrelated widgets at runtime.
 
 ## What it adds
 
 - **Local DPI scaling** that isolates exceptional responsive cases without changing the project's global DPI settings.
+- **Scale Reference** can use the project DPI or inherit the absolute scale from the nearest parent DPI Scaler.
 - **Ordered viewport rules** with optional width, height, and aspect-ratio constraints.
 - **Project DPI**, **Fixed**, and **Curve** scale modes.
-- The Blueprint node **Is Active Rule** for viewport-aware UI logic.
+- The Blueprint function `IsActiveRule` lets you determine the active resolution range by its name without changing the DPI Scale.
 - **Designer rulers** that visualize which width and height ranges match each rule.
 
 ## Installation
 
-Enable the **DPI Scaler** plugin in Unreal Editor. The **DPI Scaler** widget appears in the UMG Palette after the plugin loads.
+Enable the DPI Scaler plugin in Unreal Editor. The DPI Scaler widget appears in the UMG Palette after the plugin loads.
 
 ## Basic setup
 
-1. Add a **DPI Scaler** to a Widget Blueprint.
+1. Add a DPI Scaler to a Widget Blueprint.
 2. Give it one child panel — usually a `Canvas Panel`.
 3. Add rules in **DPI Rules**. Array entries use the rule `Name` as their title.
 4. Put the most specific rule first; the first matching rule wins.
@@ -41,7 +44,9 @@ DPI Scaler
     └── UI content
 ```
 
-Do not wrap a `Scale Box` with a `DPI Scaler`, or place a `DPI Scaler` inside a `Scale Box`, in the same layout branch. Use one scaling mechanism for that branch. Nested DPI Scalers are supported intentionally: an inner scaler resolves its local scale relative to the outer scaler rather than multiplying both final scales.
+Keep the scaler close to the content it controls. This makes its rules and scale context explicit when the complete widget tree is assembled at runtime.
+
+Do not wrap a `Scale Box` with a DPI Scaler, or place a DPI Scaler inside a `Scale Box`, in the same layout branch. Use one scaling mechanism for that branch. Nested DPI Scalers are supported intentionally: an inner scaler resolves its local scale relative to the outer scaler rather than multiplying both final scales.
 
 ## DPI rules
 
@@ -78,13 +83,22 @@ New rules default to a width curve from `(0, 0)` to `(1920, 1)`. Tune this curve
 
 The compact rule must be first because it also satisfies the wider phone rule.
 
+### Scale reference
+
+`Scale Reference` controls the fallback scale used by rules in `Use Project DPI` mode:
+
+- **Project DPI** uses the viewport's project DPI scale.
+- **Incoming DPI** inherits the absolute scale from the nearest parent DPI Scaler; without such a parent it falls back to Project DPI.
+
+`Fixed` and `Curve` values are always final absolute UI scales. A `Scale Box` or arbitrary render transform is not treated as an incoming DPI context.
+
 ## Blueprint logic
 
 Use **Is Active Rule** with a rule name to branch Blueprint logic for the rule currently selected by the viewport.
 
 ## Designer preview
 
-Select one **DPI Scaler** in the UMG Designer to see rulers above and to the left of the widget:
+Select one DPI Scaler in the UMG Designer to see rulers above and to the left of the widget:
 
 - The top ruler shows the currently valid width ranges.
 - The left ruler shows the currently valid height ranges.

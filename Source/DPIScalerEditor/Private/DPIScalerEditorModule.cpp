@@ -160,7 +160,8 @@ namespace UE::DPIScalerEditor::Private
 		const float ProjectScale = PreviewScaler != nullptr && PreviewScaler->DesignerDpi.IsSet() ? PreviewScaler->DesignerDpi.GetValue() : 1.0f;
 		const float FinalScale = Scaler.ResolveTargetUIScale(ProjectScale, IntViewportSize, ActiveRule);
 		const FString RuleName = ActiveRule != nullptr ? ActiveRule->Name.ToString() : TEXT("Project DPI");
-		const FText Status = FText::FromString(FString::Printf(TEXT("Active: %s  •  Scale %.2f"), *RuleName, FinalScale));
+		const TCHAR* ScaleReference = Scaler.ScaleReference == EDPIScalerScaleReference::IncomingDPI ? TEXT("Incoming DPI") : TEXT("Project DPI");
+		const FText Status = FText::FromString(FString::Printf(TEXT("Active: %s  •  Scale %.2f  •  Ref: %s"), *RuleName, FinalScale, ScaleReference));
 		const FVector2D StatusPosition = Origin + FVector2D(70.0f, -InformationTextOffset);
 		const FVector2D StatusSize(FMath::Max(Size.X - 76.0f, 120.0f), 12.0f);
 		FSlateDrawElement::MakeText(DrawElements, LayerId, AllottedGeometry.ToPaintGeometry(StatusSize, FSlateLayoutTransform(StatusPosition)), Status, FCoreStyle::GetDefaultFontStyle("Bold", 8), ESlateDrawEffect::None, FLinearColor::White);

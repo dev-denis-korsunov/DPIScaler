@@ -42,8 +42,9 @@ float UDPIScalerWidget::GetDPIScale() const
 	}
 
 	const UDPIScalerWidget* ParentScaler = FindParentDPIScaler();
-	const float SourceScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
-	const float ResultScale = GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) / FMath::Max(SourceScale, KINDA_SMALL_NUMBER);
+	const float IncomingScale = IsValid(ParentScaler) ? ParentScaler->GetAbsoluteDesiredDPIScale(ApplicationScale, ViewportSize) : ApplicationScale;
+	const float ReferenceScale = ScaleReference == EDPIScalerScaleReference::IncomingDPI ? IncomingScale : ApplicationScale;
+	const float ResultScale = GetAbsoluteDesiredDPIScale(ReferenceScale, ViewportSize) / FMath::Max(IncomingScale, KINDA_SMALL_NUMBER);
 	if (!FMath::IsFinite(ResultScale) || ResultScale <= 0.0f)
 	{
 		ensureMsgf(false, TEXT("DPI Scaler produced an invalid scale (%f). Falling back to 1.0."), ResultScale);

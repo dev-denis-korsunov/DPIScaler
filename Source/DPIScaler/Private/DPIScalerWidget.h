@@ -22,6 +22,13 @@ enum class EDPIBreakpointScaleAxis : uint8
 	ScreenHeight
 };
 
+UENUM(BlueprintType)
+enum class EDPIScalerScaleReference : uint8
+{
+	ProjectDPI UMETA(DisplayName = "Project DPI"),
+	IncomingDPI UMETA(DisplayName = "Incoming DPI")
+};
+
 USTRUCT(BlueprintType)
 struct DPISCALER_API FDPIBreakpointRule
 {
@@ -74,6 +81,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DPI Scaler", DisplayName = "DPI Rules", meta=(TitleProperty="Name"))
 	TArray<FDPIBreakpointRule> DPIRules;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DPI Scaler", DisplayName = "Scale Reference")
+	EDPIScalerScaleReference ScaleReference = EDPIScalerScaleReference::ProjectDPI;
 
 	UFUNCTION(BlueprintPure, Category = "DPI Scaler", meta = (DisplayName = "Is Active Rule"))
 	bool IsActiveRule(FName RuleName) const;
