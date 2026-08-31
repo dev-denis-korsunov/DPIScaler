@@ -199,12 +199,6 @@ float UDPIScalerWidget::ResolveTargetUIScale(float ProjectDPIScale, const FIntPo
 	return FMath::Max(Result, UE_SMALL_NUMBER);
 }
 
-void UDPIScalerWidget::SetDPIRules(const TArray<FDPIBreakpointRule>& InDPIRules)
-{
-	DPIRules = InDPIRules;
-	InvalidateLayoutAndVolatility();
-}
-
 void UDPIScalerWidget::SynchronizeProperties()
 {
 	Super::SynchronizeProperties();

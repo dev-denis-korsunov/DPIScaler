@@ -1,5 +1,11 @@
 # DPI Scaler
 
+![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-5.7-0E8A16?logo=unrealengine&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.0.0-0E7AC4)
+![License](https://img.shields.io/github/license/dev-denis-korsunov/DPIScaler)
+![UMG](https://img.shields.io/badge/UMG-Widget-7952B3)
+![Blueprint](https://img.shields.io/badge/Blueprint-Ready-137CBD)
+
 <img width="1416" height="858" alt="image 11" src="https://github.com/user-attachments/assets/f41f5e67-c413-4633-9cd8-58a7a572372d" />
 
 
@@ -11,7 +17,7 @@
 - **Local DPI scaling** for a UMG subtree, without changing the project's global DPI settings.
 - **Ordered viewport rules** with optional width, height, and aspect-ratio constraints.
 - **Project DPI**, **Fixed**, and **Curve** scale modes.
-- The Blueprint node **Set DPI Rules** for runtime rule replacement.
+- The Blueprint node **Is Active Rule** for viewport-aware UI logic.
 - **Designer rulers** that visualize which width and height ranges match each rule.
 
 ## Installation
@@ -70,9 +76,9 @@ New rules default to a width curve from `(0, 0)` to `(1920, 1)`. Tune this curve
 
 The compact rule must be first because it also satisfies the wider phone rule.
 
-## Runtime updates
+## Blueprint logic
 
-Use the Blueprint node **Set DPI Rules** to replace the whole array at runtime. The widget invalidates its layout immediately, so the new result is applied on the next Slate pass. Use **Is Active Rule** with a rule name to branch Blueprint logic for the rule currently selected by the viewport.
+Use **Is Active Rule** with a rule name to branch Blueprint logic for the rule currently selected by the viewport.
 
 ## Designer preview
 

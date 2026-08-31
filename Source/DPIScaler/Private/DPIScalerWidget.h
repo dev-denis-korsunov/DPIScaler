@@ -75,8 +75,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DPI Scaler", DisplayName = "DPI Rules", meta=(TitleProperty="Name"))
 	TArray<FDPIBreakpointRule> DPIRules;
 
-	UFUNCTION(BlueprintCallable, Category = "DPI Scaler", meta = (DisplayName = "Set DPI Rules"))
-	void SetDPIRules(const TArray<FDPIBreakpointRule>& InDPIRules);
 	UFUNCTION(BlueprintPure, Category = "DPI Scaler", meta = (DisplayName = "Is Active Rule"))
 	bool IsActiveRule(FName RuleName) const;
 
