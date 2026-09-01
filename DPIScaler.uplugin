@@ -10,6 +10,7 @@
 	"EnabledByDefault": true,
 	"Modules": [
 		{ "Name": "DPIScaler", "Type": "Runtime", "LoadingPhase": "Default" },
-		{ "Name": "DPIScalerEditor", "Type": "Editor", "LoadingPhase": "Default" }
+		{ "Name": "DPIScalerEditor", "Type": "Editor", "LoadingPhase": "Default" },
+		{ "Name": "DPIScalerTests", "Type": "Editor", "LoadingPhase": "Default" }
 	]
 }
